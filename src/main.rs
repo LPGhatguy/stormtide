@@ -12,24 +12,65 @@ enum Zone {
     Exile,
 }
 
+/// 205.2a The card types are artifact, conspiracy, creature, enchantment,
+///        instant, land, phenomenon, plane, planeswalker, scheme, sorcery,
+///        tribal, and vanguard. See section 3, “Card Types.”
+#[derive(Debug)]
+enum CardType {
+    Artifact,
+    // Conspiracy,
+    Creature,
+    Enchantment,
+    Instant,
+    // Phenomenon,
+    // Plane,
+    Planeswalker,
+    // Scheme,
+    Sorcery,
+    Tribal,
+    // Vanguard,
+}
+
+/// Represent base power and toughness that can be present on a creature. Some
+/// creatures have special rules that determine their base power and toughness,
+/// which can be further affected by other effects.
 #[derive(Debug, Clone, Copy)]
-struct Pt {
+enum Pt {
+    Normal(PtValue),
+}
+
+impl Pt {
+    fn resolve(&self) -> PtValue {
+        match self {
+            Pt::Normal(value) => *value,
+        }
+    }
+}
+
+/// Container for power and toughness, helping simplify calculations.
+#[derive(Debug, Clone, Copy)]
+struct PtValue {
     power: i64,
     toughness: i64,
 }
 
+/// A component that indicates that this entity is a player.
 #[derive(Debug)]
 struct Player;
 
+/// A component to indicate that this entity is an effect that should be cleaned
+/// up at the end of the turn.
 #[derive(Debug)]
 struct UntilEotEffect;
 
 #[derive(Debug)]
 struct PtEffect {
     target: Entity,
-    adjustment: Pt,
+    adjustment: PtValue,
 }
 
+/// 109.1. An object is an ability on the stack, a card, a copy of a card, a
+///        token, a spell, a permanent, or an emblem.
 #[derive(Debug)]
 struct Object {
     owner: Entity,
@@ -63,13 +104,13 @@ trait Query {
 struct QueryPt(Entity);
 
 impl Query for QueryPt {
-    type Output = Option<Pt>;
+    type Output = Option<PtValue>;
 
     fn query(&self, world: &World) -> Self::Output {
         let mut query = world.query_one::<(&Permanent, &Creature)>(self.0).ok()?;
         let (_permament, creature) = query.get()?;
 
-        let mut calculated_pt = creature.pt;
+        let mut calculated_pt = creature.pt.resolve();
 
         let mut effect_query = world.query::<(&PtEffect,)>();
         for (_entity, (effect,)) in effect_query.iter() {
@@ -81,6 +122,11 @@ impl Query for QueryPt {
 
         Some(calculated_pt)
     }
+}
+
+struct Game {
+    world: World,
+    base_player_turn_order: Vec<Entity>,
 }
 
 fn main() {
@@ -111,10 +157,10 @@ fn main() {
             controller: player1,
         },
         Creature {
-            pt: Pt {
+            pt: Pt::Normal(PtValue {
                 power: 2,
                 toughness: 2,
-            },
+            }),
         },
         Permanent { tapped: false },
     ));
@@ -123,7 +169,7 @@ fn main() {
         UntilEotEffect,
         PtEffect {
             target: bear,
-            adjustment: Pt {
+            adjustment: PtValue {
                 power: 3,
                 toughness: 3,
             },
