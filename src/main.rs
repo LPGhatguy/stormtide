@@ -69,11 +69,17 @@ impl Query for QueryPt {
         let mut query = world.query_one::<(&Permanent, &Creature)>(self.0).ok()?;
         let (_permament, creature) = query.get()?;
 
-        let mut pt = creature.pt;
+        let mut calculated_pt = creature.pt;
 
-        // TODO: Loop through all PtEffect where target == self.0 and apply adjustments.
+        let mut effect_query = world.query::<(&PtEffect,)>();
+        for (_entity, (effect,)) in effect_query.iter() {
+            if effect.target == self.0 {
+                calculated_pt.power += effect.adjustment.power;
+                calculated_pt.toughness += effect.adjustment.toughness;
+            }
+        }
 
-        Some(creature.pt)
+        Some(calculated_pt)
     }
 }
 
@@ -111,6 +117,17 @@ fn main() {
             },
         },
         Permanent { tapped: false },
+    ));
+
+    let giant_growth = world.spawn((
+        UntilEotEffect,
+        PtEffect {
+            target: bear,
+            adjustment: Pt {
+                power: 3,
+                toughness: 3,
+            },
+        },
     ));
 
     let bear_pt = QueryPt(bear).query(&world);
