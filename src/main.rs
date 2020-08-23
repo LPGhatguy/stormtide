@@ -40,9 +40,29 @@ enum Pt {
 }
 
 impl Pt {
+    /// This method will need access to the game state to do things like:
+    /// - count the number of card types in all graveyards (Tarmogoyf)
+    /// - count the number of cards in its owner's hand (Maro)
     fn resolve(&self) -> PtValue {
         match self {
             Pt::Normal(value) => *value,
+        }
+    }
+}
+
+/// Represents a change that can be applied to a creature's power and toughness.
+#[derive(Debug, Clone, Copy)]
+enum PtAdjustment {
+    Fixed(PtValue),
+}
+
+impl PtAdjustment {
+    fn adjust(&self, value: PtValue) -> PtValue {
+        match self {
+            PtAdjustment::Fixed(adjustment) => PtValue {
+                power: value.power + adjustment.power,
+                toughness: value.toughness + adjustment.toughness,
+            },
         }
     }
 }
@@ -66,7 +86,7 @@ struct UntilEotEffect;
 #[derive(Debug)]
 struct PtEffect {
     target: Entity,
-    adjustment: PtValue,
+    adjustment: PtAdjustment,
 }
 
 /// 109.1. An object is an ability on the stack, a card, a copy of a card, a
@@ -115,8 +135,7 @@ impl Query for QueryPt {
         let mut effect_query = world.query::<(&PtEffect,)>();
         for (_entity, (effect,)) in effect_query.iter() {
             if effect.target == self.0 {
-                calculated_pt.power += effect.adjustment.power;
-                calculated_pt.toughness += effect.adjustment.toughness;
+                calculated_pt = effect.adjustment.adjust(calculated_pt);
             }
         }
 
@@ -169,10 +188,10 @@ fn main() {
         UntilEotEffect,
         PtEffect {
             target: bear,
-            adjustment: PtValue {
+            adjustment: PtAdjustment::Fixed(PtValue {
                 power: 3,
                 toughness: 3,
-            },
+            }),
         },
     ));
 
