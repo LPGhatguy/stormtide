@@ -1,6 +1,11 @@
+mod pt;
+
 use std::collections::BTreeSet;
+use std::mem::swap;
 
 use hecs::{Entity, World};
+
+use pt::{AdjustPtEffect, PtCharacteristic, PtValue, SetPtEffect, SwitchPtEffect};
 
 type Subtype = String;
 
@@ -31,49 +36,6 @@ enum CardType {
     // Vanguard,
 }
 
-/// Represent base power and toughness that can be present on a creature. Some
-/// creatures have special rules that determine their base power and toughness,
-/// which can be further affected by other effects.
-#[derive(Debug, Clone, Copy)]
-enum Pt {
-    Normal(PtValue),
-}
-
-impl Pt {
-    /// This method will need access to the game state to do things like:
-    /// - count the number of card types in all graveyards (Tarmogoyf)
-    /// - count the number of cards in its owner's hand (Maro)
-    fn resolve(&self) -> PtValue {
-        match self {
-            Pt::Normal(value) => *value,
-        }
-    }
-}
-
-/// Represents a change that can be applied to a creature's power and toughness.
-#[derive(Debug, Clone, Copy)]
-enum PtAdjustment {
-    Fixed(PtValue),
-}
-
-impl PtAdjustment {
-    fn adjust(&self, value: PtValue) -> PtValue {
-        match self {
-            PtAdjustment::Fixed(adjustment) => PtValue {
-                power: value.power + adjustment.power,
-                toughness: value.toughness + adjustment.toughness,
-            },
-        }
-    }
-}
-
-/// Container for power and toughness, helping simplify calculations.
-#[derive(Debug, Clone, Copy)]
-struct PtValue {
-    power: i64,
-    toughness: i64,
-}
-
 /// A component that indicates that this entity is a player.
 #[derive(Debug)]
 struct Player;
@@ -82,12 +44,6 @@ struct Player;
 /// up at the end of the turn.
 #[derive(Debug)]
 struct UntilEotEffect;
-
-#[derive(Debug)]
-struct PtEffect {
-    target: Entity,
-    adjustment: PtAdjustment,
-}
 
 /// 109.1. An object is an ability on the stack, a card, a copy of a card, a
 ///        token, a spell, a permanent, or an emblem.
@@ -109,7 +65,7 @@ struct Permanent {
 
 #[derive(Debug)]
 struct Creature {
-    pt: Pt,
+    pt: PtCharacteristic,
 }
 
 #[derive(Debug)]
@@ -130,12 +86,39 @@ impl Query for QueryPt {
         let mut query = world.query_one::<(&Permanent, &Creature)>(self.0).ok()?;
         let (_permament, creature) = query.get()?;
 
+        // Layer 7a: characteristic-defining P/T.
         let mut calculated_pt = creature.pt.resolve();
 
-        let mut effect_query = world.query::<(&PtEffect,)>();
-        for (_entity, (effect,)) in effect_query.iter() {
+        // Layer 7b: any effects that directly set power/toughness.
+        //
+        // TODO: Sort by timestamp.
+        let mut layer_7b_query = world.query::<(&SetPtEffect,)>();
+        for (_entity, (effect,)) in layer_7b_query.iter() {
             if effect.target == self.0 {
-                calculated_pt = effect.adjustment.adjust(calculated_pt);
+                calculated_pt = effect.value;
+            }
+        }
+
+        // Layer 7c: any effects that adjust power/toughness without setting it.
+        //
+        // TODO: Sort by timestamp.
+        let mut layer_7c_query = world.query::<(&AdjustPtEffect,)>();
+        for (_entity, (effect,)) in layer_7c_query.iter() {
+            if effect.target == self.0 {
+                calculated_pt.power += effect.adjustment.power;
+                calculated_pt.toughness += effect.adjustment.toughness;
+            }
+        }
+
+        // Layer 7d: power/toughness adjustments from counters
+        //
+        // TODO
+
+        // Layer 7e: power/toughness switching
+        let mut layer_7e_query = world.query::<(&SwitchPtEffect,)>();
+        for (_entity, (effect,)) in layer_7e_query.iter() {
+            if effect.target == self.0 {
+                swap(&mut calculated_pt.power, &mut calculated_pt.toughness);
             }
         }
 
@@ -176,7 +159,7 @@ fn main() {
             controller: player1,
         },
         Creature {
-            pt: Pt::Normal(PtValue {
+            pt: PtCharacteristic::Normal(PtValue {
                 power: 2,
                 toughness: 2,
             }),
@@ -186,12 +169,12 @@ fn main() {
 
     let giant_growth = world.spawn((
         UntilEotEffect,
-        PtEffect {
+        AdjustPtEffect {
             target: bear,
-            adjustment: PtAdjustment::Fixed(PtValue {
+            adjustment: PtValue {
                 power: 3,
                 toughness: 3,
-            }),
+            },
         },
     ));
 
