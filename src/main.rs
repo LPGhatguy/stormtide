@@ -10,6 +10,30 @@ use pt::{AdjustPtEffect, PtCharacteristic, PtValue, SetPtEffect, SwitchPtEffect}
 type Subtype = String;
 
 #[derive(Debug)]
+enum Step {
+    // Beginning phases
+    Untap,
+    Upkeep,
+    Draw,
+
+    // First main phase
+    Main1,
+
+    // Combat phase
+    BeginCombat,
+    DeclareAttacks,
+    DeclareBlocks,
+    Damage,
+
+    // Second main phase
+    Main2,
+
+    // End phase
+    EndStep,
+    CleanupStep,
+}
+
+#[derive(Debug)]
 enum Zone {
     Hand,
     Battlefield,
@@ -129,6 +153,9 @@ impl Query for QueryPt {
 struct Game {
     world: World,
     base_player_turn_order: Vec<Entity>,
+    turn: Entity,
+    priority: Entity,
+    step: Step,
 }
 
 fn main() {
