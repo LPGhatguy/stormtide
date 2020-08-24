@@ -102,6 +102,11 @@ pub enum Step {
     CleanupStep,
 }
 
+/// 400.1. A zone is a place where objects can be during a game. There are
+///        normally seven zones: library, hand, battlefield, graveyard, stack,
+///        exile, and command. Some older cards also use the ante zone. Each
+///        player has their own library, hand, and graveyard. The other zones
+///        are shared by all players.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ZoneId {
     Library(Entity),
@@ -110,6 +115,7 @@ pub enum ZoneId {
     Stack,
     Battlefield,
     Exile,
+    Command,
 }
 
 #[derive(Debug)]
