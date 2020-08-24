@@ -78,28 +78,44 @@ impl Game {
     }
 }
 
+/// 500.1. A turn consists of five phases, in this order: beginning, precombat
+///        main, combat, postcombat main, and ending. Each of these phases takes
+///        place every turn, even if nothing happens during the phase. The
+///        beginning, combat, and ending phases are further broken down into
+///        steps, which proceed in order.
 #[derive(Debug)]
 pub enum Step {
-    // Beginning phases
+    // 501.1. The beginning phase consists of three steps, in this order: untap,
+    //        upkeep, and draw.
     Untap,
     Upkeep,
     Draw,
 
-    // First main phase
+    // 505.1. There are two main phases in a turn. In each turn, the first main
+    //        phase (also known as the precombat main phase) and the second main
+    //        phase (also known as the postcombat main phase) are separated by
+    //        the combat phase (see rule 506, “Combat Phase”). The precombat and
+    //        postcombat main phases are individually and collectively known as
+    //        the main phase.
     Main1,
-
-    // Combat phase
-    BeginCombat,
-    DeclareAttacks,
-    DeclareBlocks,
-    Damage,
-
-    // Second main phase
     Main2,
 
-    // End phase
-    EndStep,
-    CleanupStep,
+    // 506.1. The combat phase has five steps, which proceed in order:
+    //        beginning of combat, declare attackers, declare blockers, combat
+    //        damage, and end of combat. The declare blockers and combat damage
+    //        steps are skipped if no creatures are declared as attackers or
+    //        put onto the battlefield attacking (see rule 508.8). There are
+    //        two combat damage steps if any attacking or blocking creature has
+    //        first strike (see rule 702.7) or double strike (see rule 702.4).
+    BeginCombat,
+    DeclareAttackers,
+    DeclareBlockers,
+    CombatDamage,
+    EndOfCombat,
+
+    // 512.1. The ending phase consists of two steps: end and cleanup.
+    End,
+    Cleanup,
 }
 
 /// 400.1. A zone is a place where objects can be during a game. There are
