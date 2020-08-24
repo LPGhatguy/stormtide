@@ -89,9 +89,9 @@ impl Game {
     fn apply_state_based_actions(&mut self) {
         // 704.5a If a player has 0 or less life, that player loses the game.
         {
-            let mut player_query = self.world.query::<(&Player,)>();
+            let mut player_query = self.world.query::<(&mut Player,)>();
 
-            for (entity, (player,)) in player_query.iter() {
+            for (_entity, (player,)) in player_query.iter() {
                 if !player.has_lost && player.life <= 0 {
                     // TODO: Check if player is exempt from this SBA, like via
                     // Phyrexian Unlife.

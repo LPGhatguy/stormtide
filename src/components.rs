@@ -9,8 +9,8 @@ use crate::pt::PtCharacteristic;
 /// A component that indicates that this entity is a player.
 #[derive(Debug)]
 pub struct Player {
-    has_lost: bool,
-    life: i64,
+    pub has_lost: bool,
+    pub life: i64,
 }
 
 impl Player {
