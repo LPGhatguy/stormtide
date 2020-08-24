@@ -1,3 +1,4 @@
+mod action;
 mod components;
 mod game;
 mod pt;
@@ -5,7 +6,7 @@ mod queries;
 
 use components::{Creature, Land, Object, Permanent, UntilEotEffect};
 use game::Game;
-use pt::{AdjustPtEffect, PtCharacteristic, PtValue, SetPtEffect, SwitchPtEffect};
+use pt::{AdjustPtEffect, PtCharacteristic, PtValue};
 use queries::QueryPt;
 
 type Subtype = String;
@@ -32,8 +33,8 @@ enum CardType {
 fn main() {
     let mut game = Game::new();
 
-    let player1 = game.base_player_turn_order[0];
-    let player2 = game.base_player_turn_order[1];
+    let player1 = game.turn_order[0];
+    let player2 = game.turn_order[1];
 
     let forest1 = game.world.spawn((
         Object {
@@ -76,6 +77,15 @@ fn main() {
         },
     ));
 
-    let bear_pt = game.query(QueryPt(bear));
-    println!("bear: {:?}", bear_pt);
+    let bear_pt = game.query(QueryPt(bear)).unwrap();
+    println!("Bear has P/T: {}", bear_pt);
+
+    println!(
+        "Player 1 can currently: {:?}",
+        game.possible_actions(player1)
+    );
+    println!(
+        "Player 2 can currently: {:?}",
+        game.possible_actions(player2)
+    );
 }

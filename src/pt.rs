@@ -1,5 +1,7 @@
 //! Contains structures for Power-Toughness and related effects.
 
+use std::fmt;
+
 use hecs::Entity;
 
 /// Container for power and toughness, helping simplify calculations.
@@ -7,6 +9,12 @@ use hecs::Entity;
 pub struct PtValue {
     pub power: i64,
     pub toughness: i64,
+}
+
+impl fmt::Display for PtValue {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(formatter, "{}/{}", self.power, self.toughness)
+    }
 }
 
 /// Represent base power and toughness that can be present on a creature. Some
