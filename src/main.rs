@@ -33,14 +33,14 @@ enum Step {
     CleanupStep,
 }
 
-#[derive(Debug)]
-enum ZoneType {
-    Library,
-    Hand,
-    Battlefield,
-    Graveyard,
-    Exile,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum ZoneId {
+    Library(Entity),
+    Hand(Entity),
+    Graveyard(Entity),
     Stack,
+    Battlefield,
+    Exile,
 }
 
 /// 205.2a The card types are artifact, conspiracy, creature, enchantment,
