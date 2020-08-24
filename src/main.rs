@@ -171,12 +171,7 @@ struct Game {
     turn: Entity,
     priority: Entity,
     step: Step,
-    stack: Zone,
-    battlefield: Zone,
-    libraries: HashMap<Entity, Zone>,
-    hands: HashMap<Entity, Zone>,
-    graveyards: HashMap<Entity, Zone>,
-    exiles: HashMap<Entity, Zone>,
+    zones: HashMap<ZoneId, Zone>,
 }
 
 impl Game {
@@ -192,12 +187,7 @@ impl Game {
             turn: player1,
             priority: player1,
             step: Step::Upkeep,
-            stack: Zone::new(),
-            battlefield: Zone::new(),
-            libraries: HashMap::new(),
-            hands: HashMap::new(),
-            graveyards: HashMap::new(),
-            exiles: HashMap::new(),
+            zones: HashMap::new(),
         }
     }
 }
