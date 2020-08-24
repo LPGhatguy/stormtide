@@ -2,6 +2,7 @@
 
 use hecs::Entity;
 
+#[allow(unused)]
 #[derive(Debug)]
 pub enum Action {
     /// 104.3a A player can concede the game at any time. A player who concedes

@@ -8,6 +8,7 @@ use crate::action::Action;
 use crate::components::Player;
 use crate::queries::Query;
 
+#[allow(unused)]
 pub struct Game {
     pub world: World,
     pub turn_order: Vec<Entity>,
@@ -24,13 +25,28 @@ impl Game {
         let player1 = world.spawn((Player,));
         let player2 = world.spawn((Player,));
 
+        let players = vec![player1, player2];
+
+        let mut zones = maplit::hashmap! {
+            ZoneId::Stack => Zone::new(),
+            ZoneId::Battlefield => Zone::new(),
+            ZoneId::Exile => Zone::new(),
+            ZoneId::Command => Zone::new(),
+        };
+
+        for &player in &players {
+            zones.insert(ZoneId::Library(player), Zone::new());
+            zones.insert(ZoneId::Hand(player), Zone::new());
+            zones.insert(ZoneId::Graveyard(player), Zone::new());
+        }
+
         Self {
             world,
-            turn_order: vec![player1, player2],
+            turn_order: players,
             active_player: player1,
             priority: Some(player1),
             step: Step::Upkeep,
-            zones: HashMap::new(),
+            zones,
         }
     }
 
@@ -83,6 +99,7 @@ impl Game {
 ///        place every turn, even if nothing happens during the phase. The
 ///        beginning, combat, and ending phases are further broken down into
 ///        steps, which proceed in order.
+#[allow(unused)]
 #[derive(Debug)]
 pub enum Step {
     // 501.1. The beginning phase consists of three steps, in this order: untap,
@@ -123,6 +140,7 @@ pub enum Step {
 ///        exile, and command. Some older cards also use the ante zone. Each
 ///        player has their own library, hand, and graveyard. The other zones
 ///        are shared by all players.
+#[allow(unused)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ZoneId {
     Library(Entity),

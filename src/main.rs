@@ -1,4 +1,5 @@
 mod action;
+mod card;
 mod components;
 mod game;
 mod pt;
@@ -14,6 +15,7 @@ type Subtype = String;
 /// 205.2a The card types are artifact, conspiracy, creature, enchantment,
 ///        instant, land, phenomenon, plane, planeswalker, scheme, sorcery,
 ///        tribal, and vanguard. See section 3, “Card Types.”
+#[allow(unused)]
 #[derive(Debug)]
 enum CardType {
     Artifact,
@@ -23,10 +25,10 @@ enum CardType {
     Instant,
     // Phenomenon,
     // Plane,
-    Planeswalker,
+    // Planeswalker,
     // Scheme,
     Sorcery,
-    Tribal,
+    // Tribal,
     // Vanguard,
 }
 
@@ -36,7 +38,7 @@ fn main() {
     let player1 = game.turn_order[0];
     let player2 = game.turn_order[1];
 
-    let forest1 = game.world.spawn((
+    let _forest1 = game.world.spawn((
         Object {
             owner: player1,
             controller: player1,
@@ -44,7 +46,7 @@ fn main() {
         Land,
         Permanent { tapped: false },
     ));
-    let forest2 = game.world.spawn((
+    let _forest2 = game.world.spawn((
         Object {
             owner: player1,
             controller: player1,
@@ -66,7 +68,7 @@ fn main() {
         Permanent { tapped: false },
     ));
 
-    let giant_growth = game.world.spawn((
+    let _giant_growth = game.world.spawn((
         UntilEotEffect,
         AdjustPtEffect {
             target: bear,

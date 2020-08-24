@@ -8,3 +8,4 @@ edition = "2018"
 
 [dependencies]
 hecs = "0.2.12"
+maplit = "1.0.2"

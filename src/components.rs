@@ -23,6 +23,19 @@ pub struct Object {
     pub controller: Entity,
 }
 
+/// 108.2. When a rule or text on a card refers to a “card,” it means only a
+///        Magic card or an object represented by a Magic card.
+///
+/// 108.2a Most Magic games use only traditional Magic cards, which measure
+///        approximately 2.5 inches (6.3 cm) by 3.5 inches (8.8 cm). Certain
+///        formats also use nontraditional Magic cards, oversized cards that may
+///        have different backs.
+///
+/// 108.2b Tokens aren’t considered cards—even a card-sized game supplement that
+///        represents a token isn’t considered a card for rules purposes.
+#[derive(Debug)]
+pub struct Card {}
+
 #[derive(Debug)]
 pub struct Spell {
     pub targets: BTreeSet<Entity>,
