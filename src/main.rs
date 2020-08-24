@@ -1,6 +1,6 @@
 mod pt;
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 use std::mem::swap;
 
 use hecs::{Entity, World};
@@ -34,11 +34,13 @@ enum Step {
 }
 
 #[derive(Debug)]
-enum Zone {
+enum ZoneType {
+    Library,
     Hand,
     Battlefield,
     Graveyard,
     Exile,
+    Stack,
 }
 
 /// 205.2a The card types are artifact, conspiracy, creature, enchantment,
@@ -150,21 +152,63 @@ impl Query for QueryPt {
     }
 }
 
+#[derive(Debug)]
+struct Zone {
+    members: Vec<Entity>,
+}
+
+impl Zone {
+    fn new() -> Self {
+        Self {
+            members: Vec::new(),
+        }
+    }
+}
+
 struct Game {
     world: World,
     base_player_turn_order: Vec<Entity>,
     turn: Entity,
     priority: Entity,
     step: Step,
+    stack: Zone,
+    battlefield: Zone,
+    libraries: HashMap<Entity, Zone>,
+    hands: HashMap<Entity, Zone>,
+    graveyards: HashMap<Entity, Zone>,
+    exiles: HashMap<Entity, Zone>,
+}
+
+impl Game {
+    fn new() -> Self {
+        let mut world = World::new();
+
+        let player1 = world.spawn((Player,));
+        let player2 = world.spawn((Player,));
+
+        Self {
+            world,
+            base_player_turn_order: vec![player1, player2],
+            turn: player1,
+            priority: player1,
+            step: Step::Upkeep,
+            stack: Zone::new(),
+            battlefield: Zone::new(),
+            libraries: HashMap::new(),
+            hands: HashMap::new(),
+            graveyards: HashMap::new(),
+            exiles: HashMap::new(),
+        }
+    }
 }
 
 fn main() {
-    let mut world = World::new();
+    let mut game = Game::new();
 
-    let player1 = world.spawn((Player,));
-    let player2 = world.spawn((Player,));
+    let player1 = game.base_player_turn_order[0];
+    let player2 = game.base_player_turn_order[1];
 
-    let forest1 = world.spawn((
+    let forest1 = game.world.spawn((
         Object {
             owner: player1,
             controller: player1,
@@ -172,7 +216,7 @@ fn main() {
         Land,
         Permanent { tapped: false },
     ));
-    let forest2 = world.spawn((
+    let forest2 = game.world.spawn((
         Object {
             owner: player1,
             controller: player1,
@@ -180,7 +224,7 @@ fn main() {
         Land,
         Permanent { tapped: false },
     ));
-    let bear = world.spawn((
+    let bear = game.world.spawn((
         Object {
             owner: player1,
             controller: player1,
@@ -194,7 +238,7 @@ fn main() {
         Permanent { tapped: false },
     ));
 
-    let giant_growth = world.spawn((
+    let giant_growth = game.world.spawn((
         UntilEotEffect,
         AdjustPtEffect {
             target: bear,
@@ -205,6 +249,6 @@ fn main() {
         },
     ));
 
-    let bear_pt = QueryPt(bear).query(&world);
+    let bear_pt = QueryPt(bear).query(&game.world);
     println!("bear: {:?}", bear_pt);
 }
