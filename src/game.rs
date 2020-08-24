@@ -51,15 +51,31 @@ impl Game {
     }
 
     pub fn do_action(&mut self, player: Entity, action: Action) {
-        match (player, action) {
-            (_, Action::Concede) => unimplemented!("complete game"),
-            (player, Action::PassPriority) if self.priority == Some(player) => self.pass_priority(),
-            (player, action) => panic!("illegal action {:?} by player {:?}", action, player),
+        match action {
+            Action::Concede => unimplemented!("complete game"),
+            Action::PassPriority => self.pass_priority(player),
+            Action::CastSpell { spell } => {
+                unimplemented!("player {:?} casting spell {:?}", player, spell)
+            }
+            Action::ActivateAbility { object, ability } => unimplemented!(
+                "player {:?} activating ability #{} on object {:?}",
+                player,
+                ability,
+                object
+            ),
+            Action::PlayLand { card } => {
+                unimplemented!("player {:?} playing land {:?}", player, card)
+            }
         }
     }
 
     fn apply_state_based_actions(&mut self) {}
-    fn pass_priority(&mut self) {}
+
+    fn pass_priority(&mut self, player: Entity) {
+        if self.priority != Some(player) {
+            return;
+        }
+    }
 }
 
 #[derive(Debug)]
