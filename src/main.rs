@@ -10,8 +10,6 @@ use game::Game;
 use pt::{AdjustPtEffect, PtCharacteristic, PtValue};
 use queries::QueryPt;
 
-type Subtype = String;
-
 /// 205.2a The card types are artifact, conspiracy, creature, enchantment,
 ///        instant, land, phenomenon, plane, planeswalker, scheme, sorcery,
 ///        tribal, and vanguard. See section 3, “Card Types.”

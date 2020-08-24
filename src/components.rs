@@ -8,7 +8,19 @@ use crate::pt::PtCharacteristic;
 
 /// A component that indicates that this entity is a player.
 #[derive(Debug)]
-pub struct Player;
+pub struct Player {
+    has_lost: bool,
+    life: i64,
+}
+
+impl Player {
+    pub fn new() -> Self {
+        Self {
+            has_lost: false,
+            life: 20,
+        }
+    }
+}
 
 /// A component to indicate that this entity is an effect that should be cleaned
 /// up at the end of the turn.
