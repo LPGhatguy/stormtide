@@ -1,6 +1,6 @@
 //! Defines the high-level structure describing a game of Magic.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use hecs::{Entity, World};
 
@@ -10,12 +10,36 @@ use crate::queries::Query;
 
 #[allow(unused)]
 pub struct Game {
+    /// The source of information for all game objects in all zones, as well as
+    /// active effects and anything that can be targeted.
     pub world: World,
+
+    /// The turn order and list of player entities in the game.
     pub turn_order: Vec<Entity>,
+
+    /// For this round of priority passing, tracks which players have had a
+    /// chance to take an action and have already passed priority.
+    ///
+    /// When all players have passed priority, the step and/or turn advances.
+    players_that_have_passed: HashSet<Entity>,
+
+    /// The Active Player (AP) is the player whose turn it is. All other players
+    /// are Non-Active Players (NAP).
     active_player: Entity,
+
+    /// The player, if any, that has priority right now. In some steps, like the
+    /// untap and cleanup steps, players do not normally receive priority.
     priority: Option<Entity>,
+
+    /// The current step in the game.
     step: Step,
+
+    /// Tracks all zones in the game, used as an index into `world`, which
+    /// contains this information as well on each entity.
     zones: HashMap<ZoneId, Zone>,
+    // TODO: Triggered abilities that haven't been placed on the stack yet.
+    // These abilities will be placed on an order in APNAP order, with each
+    // player choosing how to order the individual triggers.
 }
 
 impl Game {
@@ -43,6 +67,7 @@ impl Game {
         Self {
             world,
             turn_order: players,
+            players_that_have_passed: HashSet::new(),
             active_player: player1,
             priority: Some(player1),
             step: Step::Upkeep,
@@ -211,6 +236,216 @@ impl Game {
         if self.priority != Some(player) {
             return;
         }
+
+        self.players_that_have_passed.insert(player);
+
+        // 117.4. If all players pass in succession (that is, if all players
+        //        pass without taking any actions in between passing), the spell
+        //        or ability on top of the stack resolves or, if the stack is
+        //        empty, the phase or step ends.
+        let next_player = self.player_after(player);
+        if self.players_that_have_passed.contains(&next_player) {
+            self.players_that_have_passed.clear();
+
+            let stack = &self.zones[&ZoneId::Stack];
+            if stack.is_empty() {
+                self.end_current_step();
+            } else {
+                self.resolve_one_from_stack();
+            }
+        }
+    }
+
+    fn end_current_step(&mut self) {
+        let stack = &self.zones[&ZoneId::Stack];
+        assert!(stack.is_empty());
+
+        if let Some(next_step) = self.next_step() {
+            // Advancing to the next step within the same turn.
+            self.enter_step(next_step);
+        } else {
+            // Advacing to the next turn.
+            self.end_current_turn();
+        }
+    }
+
+    fn end_current_turn(&mut self) {
+        let stack = &self.zones[&ZoneId::Stack];
+        assert!(stack.is_empty());
+
+        let next_player = self.player_after(self.active_player);
+
+        self.active_player = next_player;
+        self.enter_step(Step::Untap);
+    }
+
+    fn enter_step(&mut self, step: Step) {
+        self.step = step;
+
+        match step {
+            // 502. Untap Step
+            Step::Untap => {
+                // 502.1. First, all phased-in permanents with phasing that the
+                //        active player controls phase out, and all phased-out
+                //        permanents that the active player controlled when they
+                //        phased out phase in. This all happens simultaneously.
+                //        This turn-based action doesn’t use the stack. See rule
+                //        702.25, “Phasing.”
+                //
+                // TODO
+
+                // 502.2. Second, the active player determines which permanents
+                //        they control will untap. Then they untap them all
+                //        simultaneously. This turn-based action doesn’t use the
+                //        stack. Normally, all of a player’s permanents untap,
+                //        but effects can keep one or more of a player’s
+                //        permanents from untapping.
+                //
+                // TODO
+
+                // 502.3. No player receives priority during the untap step, so
+                //        no spells can be cast or resolve and no abilities can
+                //        be activated or resolve. Any ability that triggers
+                //        during this step will be held until the next time a
+                //        player would receive priority, which is usually during
+                //        the upkeep step. (See rule 503, “Upkeep Step.”)
+                self.enter_step(Step::Upkeep);
+            }
+
+            // 503. Upkeep Step
+            Step::Upkeep => {
+                // 503.1. The upkeep step has no turn-based actions. Once it
+                //        begins, the active player gets priority. (See rule
+                //        117, “Timing and Priority.”)
+                self.priority = Some(self.active_player);
+
+                // 503.1a Any abilities that triggered during the untap step and
+                //        any abilities that triggered at the beginning of the
+                //        upkeep are put onto the stack before the active player
+                //        gets priority; the order in which they triggered
+                //        doesn’t matter. (See rule 603, “Handling Triggered
+                //        Abilities.”)
+                //
+                // TODO
+            }
+
+            // 504. Draw Step
+            Step::Draw => {
+                // 504.1. First, the active player draws a card. This turn-based
+                //        action doesn’t use the stack.
+                //
+                // TODO
+
+                // 504.2. Second, the active player gets priority. (See rule
+                //        117, “Timing and Priority.”)
+                self.priority = Some(self.active_player);
+            }
+
+            // 505. Main Phase
+            Step::Main1 | Step::Main2 => {
+                // 505.4. Second, if the active player controls one or more Saga
+                //        enchantments and it’s the active player’s precombat
+                //        main phase, the active player puts a lore counter on
+                //        each Saga they control. (See rule 714, “Saga Cards.”)
+                //        This turn-based action doesn’t use the stack.
+                //
+                // TODO
+
+                // 505.5. Third, the active player gets priority. (See rule 117,
+                //        “Timing and Priority.”)
+                self.priority = Some(self.active_player);
+            }
+
+            Step::BeginCombat
+            | Step::DeclareAttackers
+            | Step::DeclareBlockers
+            | Step::CombatDamage
+            | Step::EndOfCombat => {
+                // TODO: just skipping combat completely for now
+                self.end_current_step();
+            }
+
+            // 513. End Step
+            Step::End => {
+                // 513.1. The end step has no turn-based actions. Once it
+                //        begins, the active player gets priority. (See rule
+                //        117, “Timing and Priority.”)
+                self.priority = Some(self.active_player);
+            }
+
+            // 514. Cleanup Step
+            Step::Cleanup => {
+                // 514.1. First, if the active player’s hand contains more cards
+                //        than their maximum hand size (normally seven), they
+                //        discard enough cards to reduce their hand size to that
+                //        number. This turn-based action doesn’t use the stack.
+                //
+                // TODO
+
+                // 514.2. Second, the following actions happen simultaneously:
+                //        all damage marked on permanents (including phased-out
+                //        permanents) is removed and all “until end of turn” and
+                //        “this turn” effects end. This turn-based action
+                //        doesn’t use the stack.
+                //
+                // TODO
+
+                // 514.3. Normally, no player receives priority during the
+                //        cleanup step, so no spells can be cast and no
+                //        abilities can be activated. However, this rule is
+                //        subject to the following exception:
+                // 514.3a At this point, the game checks to see if any
+                //        state-based actions would be performed and/or any
+                //        triggered abilities are waiting to be put onto the
+                //        stack (including those that trigger “at the beginning
+                //        of the next cleanup step”). If so, those state-based
+                //        actions are performed, then those triggered abilities
+                //        are put on the stack, then the active player gets
+                //        priority. Players may cast spells and activate
+                //        abilities. Once the stack is empty and all players
+                //        pass in succession, another cleanup step begins.
+                //
+                // TODO
+
+                self.end_current_step();
+            }
+        }
+    }
+
+    fn resolve_one_from_stack(&mut self) {
+        todo!("resolve one entry from stack");
+    }
+
+    /// Returns the next player, in turn order. This is used for priority
+    /// passing, turn order, and various effects.
+    fn player_after(&self, player: Entity) -> Entity {
+        let maybe_index = self.turn_order.iter().position(|&turn| turn == player);
+
+        let index = match maybe_index {
+            Some(index) => index,
+            None => panic!("Game::player_after was called with a non-player Entity."),
+        };
+
+        let next_index = (index + 1) % self.turn_order.len();
+        self.turn_order[next_index]
+    }
+
+    /// Returns the next step if there are steps to take still in this turn.
+    fn next_step(&self) -> Option<Step> {
+        match self.step {
+            Step::Untap => Some(Step::Upkeep),
+            Step::Upkeep => Some(Step::Draw),
+            Step::Draw => Some(Step::Main1),
+            Step::Main1 => Some(Step::BeginCombat),
+            Step::BeginCombat => Some(Step::DeclareAttackers),
+            Step::DeclareAttackers => Some(Step::DeclareBlockers),
+            Step::DeclareBlockers => Some(Step::CombatDamage),
+            Step::CombatDamage => Some(Step::EndOfCombat),
+            Step::EndOfCombat => Some(Step::Main2),
+            Step::Main2 => Some(Step::End),
+            Step::End => Some(Step::Cleanup),
+            Step::Cleanup => None,
+        }
     }
 }
 
@@ -220,7 +455,7 @@ impl Game {
 ///        beginning, combat, and ending phases are further broken down into
 ///        steps, which proceed in order.
 #[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Step {
     // 501.1. The beginning phase consists of three steps, in this order: untap,
     //        upkeep, and draw.
@@ -282,5 +517,9 @@ impl Zone {
         Self {
             members: Vec::new(),
         }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.members.is_empty()
     }
 }
