@@ -6,6 +6,7 @@ mod game;
 mod pt;
 mod queries;
 
+use action::Action;
 use components::{Creature, Land, Object, Permanent, UntilEotEffect};
 use game::Game;
 use pt::{AdjustPtEffect, PtCharacteristic, PtValue};
@@ -32,6 +33,8 @@ enum CardType {
 }
 
 fn main() {
+    env_logger::init();
+
     let mut game = Game::new();
 
     let player1 = game.turn_order[0];
@@ -81,12 +84,10 @@ fn main() {
     let bear_pt = game.query(QueryPt(bear)).unwrap();
     println!("Bear has P/T: {}", bear_pt);
 
-    println!(
-        "Player 1 can currently: {:?}",
-        game.possible_actions(player1)
-    );
-    println!(
-        "Player 2 can currently: {:?}",
-        game.possible_actions(player2)
-    );
+    while game.turn_number < 3 {
+        println!("{}", game.debug_show());
+        game.do_action(game.priority_player.unwrap(), Action::PassPriority);
+
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
 }

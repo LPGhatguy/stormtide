@@ -17,6 +17,10 @@ pub struct Game {
     /// The turn order and list of player entities in the game.
     pub turn_order: Vec<Entity>,
 
+    /// The current turn. Starts at 0 before the first untap step, then proceeds
+    /// at the end of each round of turns.
+    pub turn_number: usize,
+
     /// For this round of priority passing, tracks which players have had a
     /// chance to take an action and have already passed priority.
     ///
@@ -25,11 +29,11 @@ pub struct Game {
 
     /// The Active Player (AP) is the player whose turn it is. All other players
     /// are Non-Active Players (NAP).
-    active_player: Entity,
+    pub active_player: Entity,
 
     /// The player, if any, that has priority right now. In some steps, like the
     /// untap and cleanup steps, players do not normally receive priority.
-    priority: Option<Entity>,
+    pub priority_player: Option<Entity>,
 
     /// The current step in the game.
     step: Step,
@@ -67,9 +71,10 @@ impl Game {
         Self {
             world,
             turn_order: players,
+            turn_number: 1,
             players_that_have_passed: HashSet::new(),
             active_player: player1,
-            priority: Some(player1),
+            priority_player: Some(player1),
             step: Step::Upkeep,
             zones,
         }
@@ -84,7 +89,7 @@ impl Game {
     pub fn possible_actions(&self, player: Entity) -> Vec<Action> {
         let mut actions = vec![Action::Concede];
 
-        if self.priority == Some(player) {
+        if self.priority_player == Some(player) {
             actions.push(Action::PassPriority);
         }
 
@@ -92,6 +97,8 @@ impl Game {
     }
 
     pub fn do_action(&mut self, player: Entity, action: Action) {
+        log::debug!("Player {:?} attempting action {:?}", player, action);
+
         match action {
             Action::Concede => unimplemented!("complete game"),
             Action::PassPriority => self.pass_priority(player),
@@ -108,6 +115,13 @@ impl Game {
                 unimplemented!("player {:?} playing land {:?}", player, card)
             }
         }
+    }
+
+    pub fn debug_show(&self) -> String {
+        format!(
+            "Turn: #{}   AP: {:?}   PP: {:?}   Step: {:?}   ",
+            self.turn_number, self.active_player, self.priority_player, self.step
+        )
     }
 
     /// 704. State-Based Actions (https://mtg.gamepedia.com/State-based_action)
@@ -233,7 +247,11 @@ impl Game {
     }
 
     fn pass_priority(&mut self, player: Entity) {
-        if self.priority != Some(player) {
+        if self.priority_player != Some(player) {
+            log::warn!(
+                "Player {:?} tried to pass priority but is not the priority player",
+                player
+            );
             return;
         }
 
@@ -244,7 +262,12 @@ impl Game {
         //        or ability on top of the stack resolves or, if the stack is
         //        empty, the phase or step ends.
         let next_player = self.player_after(player);
+        log::debug!("Player {:?} passing priority to {:?}", player, next_player);
+
         if self.players_that_have_passed.contains(&next_player) {
+            log::debug!("All players have passed");
+
+            self.priority_player = None;
             self.players_that_have_passed.clear();
 
             let stack = &self.zones[&ZoneId::Stack];
@@ -253,10 +276,15 @@ impl Game {
             } else {
                 self.resolve_one_from_stack();
             }
+        } else {
+            // TODO: Do we need to apply state based actions here?
+            self.priority_player = Some(next_player);
         }
     }
 
     fn end_current_step(&mut self) {
+        log::debug!("Ending current step");
+
         let stack = &self.zones[&ZoneId::Stack];
         assert!(stack.is_empty());
 
@@ -270,16 +298,25 @@ impl Game {
     }
 
     fn end_current_turn(&mut self) {
+        log::debug!("Ending current turn");
+
         let stack = &self.zones[&ZoneId::Stack];
         assert!(stack.is_empty());
 
         let next_player = self.player_after(self.active_player);
+        let is_new_turn_cycle = next_player == self.turn_order[0];
 
         self.active_player = next_player;
         self.enter_step(Step::Untap);
+
+        if is_new_turn_cycle {
+            self.turn_number += 1;
+        }
     }
 
     fn enter_step(&mut self, step: Step) {
+        log::debug!("Entering step {:?}", step);
+
         self.step = step;
 
         match step {
@@ -317,7 +354,7 @@ impl Game {
                 // 503.1. The upkeep step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.priority = Some(self.active_player);
+                self.priority_player = Some(self.active_player);
 
                 // 503.1a Any abilities that triggered during the untap step and
                 //        any abilities that triggered at the beginning of the
@@ -338,7 +375,7 @@ impl Game {
 
                 // 504.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.priority = Some(self.active_player);
+                self.priority_player = Some(self.active_player);
             }
 
             // 505. Main Phase
@@ -353,7 +390,7 @@ impl Game {
 
                 // 505.5. Third, the active player gets priority. (See rule 117,
                 //        “Timing and Priority.”)
-                self.priority = Some(self.active_player);
+                self.priority_player = Some(self.active_player);
             }
 
             Step::BeginCombat
@@ -370,7 +407,7 @@ impl Game {
                 // 513.1. The end step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.priority = Some(self.active_player);
+                self.priority_player = Some(self.active_player);
             }
 
             // 514. Cleanup Step
