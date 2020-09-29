@@ -14,6 +14,9 @@ pub struct Game {
     /// active effects and anything that can be targeted.
     pub world: World,
 
+    /// The next timestamp that will be assigned to an entity.
+    next_timestamp: u64,
+
     /// The turn order and list of player entities in the game.
     pub turn_order: Vec<Entity>,
 
@@ -70,6 +73,7 @@ impl Game {
 
         Self {
             world,
+            next_timestamp: 0,
             turn_order: players,
             turn_number: 1,
             players_that_have_passed: HashSet::new(),
@@ -115,6 +119,12 @@ impl Game {
                 unimplemented!("player {:?} playing land {:?}", player, card)
             }
         }
+    }
+
+    pub fn timestamp(&mut self) -> u64 {
+        let timestamp = self.next_timestamp;
+        self.next_timestamp += 1;
+        timestamp
     }
 
     pub fn debug_show(&self) -> String {
