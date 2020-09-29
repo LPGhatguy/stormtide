@@ -27,6 +27,13 @@ impl Player {
 #[derive(Debug)]
 pub struct UntilEotEffect;
 
+/// Indicates that this entity's lifetime is tied to another entity. Used for
+/// clearing static effects attached to permanents.
+#[derive(Debug)]
+pub struct AttachedToEntity {
+    pub target: Entity,
+}
+
 /// 109.1. An object is an ability on the stack, a card, a copy of a card, a
 ///        token, a spell, a permanent, or an emblem.
 #[derive(Debug)]

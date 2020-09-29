@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use hecs::{Entity, World};
 
 use crate::action::Action;
-use crate::components::Player;
+use crate::components::{AttachedToEntity, Player};
 use crate::queries::Query;
 
 #[allow(unused)]
@@ -126,6 +126,27 @@ impl Game {
 
     /// 704. State-Based Actions (https://mtg.gamepedia.com/State-based_action)
     fn apply_state_based_actions(&mut self) {
+        // Clear any effects attached to objects that no longer exist.
+        {
+            let mut entities_to_despawn = Vec::new();
+            let mut query = self.world.query::<(&AttachedToEntity,)>();
+
+            // Should this be applied recursively? For simplicity, it is not,
+            // but this means that nested chains of attachments may not be
+            // removed correctly.
+            for (entity, (attached,)) in query.iter() {
+                if !self.world.contains(attached.target) {
+                    entities_to_despawn.push(entity);
+                }
+            }
+
+            drop(query);
+
+            for entity in entities_to_despawn {
+                self.world.despawn(entity).unwrap();
+            }
+        }
+
         // 704.5a If a player has 0 or less life, that player loses the game.
         {
             let mut player_query = self.world.query::<(&mut Player,)>();
