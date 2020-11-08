@@ -4,5 +4,5 @@ use crate::cost::Cost;
 
 pub struct CardDescriptor {
     name: String,
-    primary_cost: Cost,
+    primary_cost: Option<Cost>,
 }

@@ -5,32 +5,13 @@ mod cost;
 mod game;
 mod pt;
 mod queries;
+mod types;
 
 use action::Action;
 use components::{Creature, Land, Object, Permanent, UntilEotEffect};
 use game::Game;
 use pt::{AdjustPtEffect, PtCharacteristic, PtValue};
 use queries::QueryPt;
-
-/// 205.2a The card types are artifact, conspiracy, creature, enchantment,
-///        instant, land, phenomenon, plane, planeswalker, scheme, sorcery,
-///        tribal, and vanguard. See section 3, “Card Types.”
-#[allow(unused)]
-#[derive(Debug)]
-enum CardType {
-    Artifact,
-    // Conspiracy,
-    Creature,
-    Enchantment,
-    Instant,
-    // Phenomenon,
-    // Plane,
-    // Planeswalker,
-    // Scheme,
-    Sorcery,
-    // Tribal,
-    // Vanguard,
-}
 
 fn main() {
     env_logger::init();
