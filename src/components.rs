@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 
 use hecs::Entity;
 
+use crate::counters::Counter;
 use crate::pt::PtCharacteristic;
 
 /// A component that indicates that this entity is a player.
@@ -68,6 +69,11 @@ pub struct Permanent {
 #[derive(Debug)]
 pub struct Creature {
     pub pt: PtCharacteristic,
+}
+
+#[derive(Debug)]
+pub struct Counters {
+    pub counters: Vec<Counter>,
 }
 
 #[derive(Debug)]

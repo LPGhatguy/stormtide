@@ -9,6 +9,7 @@ use crate::pt::PtValue;
 ///        Counters are not objects and have no characteristics. Notably, a
 ///        counter is not a token, and a token is not a counter. Counters with
 ///        the same name or description are interchangeable.
+#[derive(Debug)]
 pub enum Counter {
     /// 122.1a A +X/+Y counter on a creature or on a creature card in a zone
     ///        other than the battlefield, where X and Y are numbers, adds X to

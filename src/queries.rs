@@ -4,7 +4,8 @@ use std::mem::swap;
 
 use hecs::{Entity, World};
 
-use crate::components::{Creature, Permanent};
+use crate::components::{Counters, Creature, Permanent};
+use crate::counters::Counter;
 use crate::pt::{AdjustPtEffect, PtValue, SetPtEffect, SwitchPtEffect};
 
 /// Trait implemented on types to read information from the game state.
@@ -22,8 +23,14 @@ impl Query for QueryPt {
     type Output = Option<PtValue>;
 
     fn query(&self, world: &World) -> Self::Output {
-        let mut query = world.query_one::<(&Permanent, &Creature)>(self.0).ok()?;
-        let (_permament, creature) = query.get()?;
+        let entity = world.entity(self.0).ok()?;
+
+        if !entity.has::<Permanent>() {
+            return None;
+        }
+
+        let creature = entity.get::<Creature>()?;
+        let counters = entity.get::<Counters>();
 
         // Layer 7a: characteristic-defining P/T.
         let mut calculated_pt = creature.pt.resolve();
@@ -50,8 +57,14 @@ impl Query for QueryPt {
         }
 
         // Layer 7d: power/toughness adjustments from counters
-        //
-        // TODO
+        if let Some(counters) = counters {
+            for counter in &counters.counters {
+                if let Counter::Pt(adjustment) = counter {
+                    calculated_pt.power += adjustment.power;
+                    calculated_pt.toughness += adjustment.toughness;
+                }
+            }
+        }
 
         // Layer 7e: power/toughness switching
         let mut layer_7e_query = world.query::<(&SwitchPtEffect,)>();

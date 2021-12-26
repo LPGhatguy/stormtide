@@ -1,5 +1,6 @@
 use smol_str::SmolStr;
 
+#[derive(Debug)]
 pub struct Ident(SmolStr);
 
 impl Ident {
