@@ -64,3 +64,20 @@ impl Query for QueryPt {
         Some(calculated_pt)
     }
 }
+
+pub struct QueryCreatures;
+
+impl Query for QueryCreatures {
+    type Output = Vec<Entity>;
+
+    fn query(&self, world: &World) -> Self::Output {
+        let mut query = world.query::<()>().with::<Creature>().with::<Permanent>();
+        let mut output = Vec::new();
+
+        for (entity, ()) in query.into_iter() {
+            output.push(entity);
+        }
+
+        output
+    }
+}

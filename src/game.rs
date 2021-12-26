@@ -41,6 +41,10 @@ pub struct Game {
     /// The current step in the game.
     step: Step,
 
+    /// The current state of the game; what the game dictates must happen next
+    /// to proceed.
+    state: GameState,
+
     /// Tracks all zones in the game, used as an index into `world`, which
     /// contains this information as well on each entity.
     zones: HashMap<ZoneId, Zone>,
@@ -49,6 +53,44 @@ pub struct Game {
     // These abilities will be placed on an order in APNAP order, with each
     // player choosing how to order the individual triggers.
     pending_triggers: (),
+}
+
+pub enum GameState {
+    /// The game is processing. No players can do anything right now.
+    Processing,
+
+    /// A player has priority and can start to take an action. `priority_player`
+    /// will be Some.
+    Priority,
+
+    /// The game has concluded.
+    Complete(GameOutcome),
+
+    /// The game needs a specific kind of input to continue, like choosing a
+    /// spell's target, choosing how to pay a cost, etc.
+    ///
+    /// This can also be used to pause the rules engine while a request is being
+    /// made to a hyptothetical authoritative server for more information.
+    NeedInput(GameInput),
+}
+
+pub enum GameOutcome {
+    Win(Entity),
+}
+
+pub struct GameInput {
+    player: Entity,
+    input: GameInputKind,
+}
+
+pub enum GameInputKind {
+    ChooseAttackers,
+    ChooseBlockers,
+    ChooseBlockerOrder,
+
+    ChooseTarget {
+        options: Box<dyn Query<Output = Vec<Entity>>>,
+    },
 }
 
 impl Game {
@@ -82,6 +124,7 @@ impl Game {
             active_player: player1,
             priority_player: Some(player1),
             step: Step::Upkeep,
+            state: GameState::Priority,
             zones,
             pending_triggers: (),
         }
@@ -107,7 +150,9 @@ impl Game {
         log::debug!("Player {:?} attempting action {:?}", player, action);
 
         match action {
-            Action::Concede => unimplemented!("complete game"),
+            Action::Concede => {
+                todo!("let player {:?} concede", player)
+            }
             Action::PassPriority => self.pass_priority(player),
             Action::CastSpell { spell } => {
                 unimplemented!("player {:?} casting spell {:?}", player, spell)
@@ -132,7 +177,7 @@ impl Game {
 
     pub fn debug_show(&self) -> String {
         format!(
-            "Turn: #{}   AP: {:?}   PP: {:?}   Step: {:?}   ",
+            "Turn: #{}   AP: {:?}   PP: {:?}   Step: {:?}",
             self.turn_number, self.active_player, self.priority_player, self.step
         )
     }
