@@ -44,9 +44,11 @@ pub struct Game {
     /// Tracks all zones in the game, used as an index into `world`, which
     /// contains this information as well on each entity.
     zones: HashMap<ZoneId, Zone>,
+
     // TODO: Triggered abilities that haven't been placed on the stack yet.
     // These abilities will be placed on an order in APNAP order, with each
     // player choosing how to order the individual triggers.
+    pending_triggers: (),
 }
 
 impl Game {
@@ -81,6 +83,7 @@ impl Game {
             priority_player: Some(player1),
             step: Step::Upkeep,
             zones,
+            pending_triggers: (),
         }
     }
 
