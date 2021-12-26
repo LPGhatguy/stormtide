@@ -1,6 +1,7 @@
 //! Defines the high-level structure describing a game of Magic.
 
 use std::collections::{HashMap, HashSet};
+use std::fmt::{self, Debug};
 
 use hecs::{Entity, World};
 
@@ -173,13 +174,6 @@ impl Game {
         let timestamp = self.next_timestamp;
         self.next_timestamp += 1;
         timestamp
-    }
-
-    pub fn debug_show(&self) -> String {
-        format!(
-            "Turn: #{}   AP: {:?}   PP: {:?}   Step: {:?}",
-            self.turn_number, self.active_player, self.priority_player, self.step
-        )
     }
 
     /// 704. State-Based Actions (https://mtg.gamepedia.com/State-based_action)
@@ -562,6 +556,16 @@ impl Game {
             Step::End => Some(Step::Cleanup),
             Step::Cleanup => None,
         }
+    }
+}
+
+impl Debug for Game {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Turn: #{}   AP: {:?}   PP: {:?}   Step: {:?}",
+            self.turn_number, self.active_player, self.priority_player, self.step
+        )
     }
 }
 

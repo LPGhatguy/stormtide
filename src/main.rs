@@ -69,7 +69,7 @@ fn main() {
     println!("Bear has P/T: {}", bear_pt);
 
     while game.turn_number < 3 {
-        println!("{}", game.debug_show());
+        println!("{:?}", game);
         game.do_action(game.priority_player.unwrap(), Action::PassPriority);
 
         std::thread::sleep(std::time::Duration::from_millis(100));
