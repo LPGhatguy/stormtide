@@ -77,4 +77,9 @@ pub struct Counters {
 }
 
 #[derive(Debug)]
+pub struct Damage {
+    pub amount: u64,
+}
+
+#[derive(Debug)]
 pub struct Land;

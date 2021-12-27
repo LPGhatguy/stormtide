@@ -5,10 +5,16 @@ use std::fmt;
 use hecs::Entity;
 
 /// Container for power and toughness, helping simplify calculations.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PtValue {
     pub power: i64,
     pub toughness: i64,
+}
+
+impl PtValue {
+    pub fn new(power: i64, toughness: i64) -> Self {
+        Self { power, toughness }
+    }
 }
 
 impl fmt::Display for PtValue {

@@ -70,8 +70,67 @@ fn main() {
 
     while game.turn_number < 3 {
         println!("{:?}", game);
-        game.do_action(game.priority_player.unwrap(), Action::PassPriority);
+        game.do_action(game.priority_player().unwrap(), Action::PassPriority);
 
         std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::action::Action;
+    use crate::components::{Creature, Land, Object, Permanent, UntilEotEffect};
+    use crate::game::Game;
+    use crate::pt::{AdjustPtEffect, PtCharacteristic, PtValue};
+    use crate::queries::QueryPt;
+
+    #[test]
+    fn until_eot_pt_adjust() {
+        let mut game = Game::new();
+
+        let player1 = game.turn_order[0];
+
+        let bear = game.world.spawn((
+            Object {
+                owner: player1,
+                controller: player1,
+            },
+            Creature {
+                pt: PtCharacteristic::Normal(PtValue {
+                    power: 2,
+                    toughness: 2,
+                }),
+            },
+            Permanent { tapped: false },
+        ));
+
+        let _giant_growth = game.world.spawn((
+            UntilEotEffect,
+            AdjustPtEffect {
+                target: bear,
+                adjustment: PtValue {
+                    power: 3,
+                    toughness: 3,
+                },
+            },
+        ));
+
+        let bear_pt = game.query(QueryPt(bear)).unwrap();
+        assert_eq!(bear_pt, PtValue::new(5, 5));
+
+        while game.turn_number < 2 {
+            game.do_action(game.priority_player().unwrap(), Action::PassPriority);
+        }
+
+        assert_eq!(bear_pt, PtValue::new(2, 2));
+    }
+
+    #[test]
+    fn turns_pass() {
+        let mut game = Game::new();
+
+        while game.turn_number < 3 {
+            game.do_action(game.priority_player().unwrap(), Action::PassPriority);
+        }
     }
 }

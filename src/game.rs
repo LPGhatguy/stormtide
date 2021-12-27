@@ -6,7 +6,7 @@ use std::fmt::{self, Debug};
 use hecs::{Entity, World};
 
 use crate::action::Action;
-use crate::components::{AttachedToEntity, Player};
+use crate::components::{AttachedToEntity, Damage, Player, UntilEotEffect};
 use crate::queries::Query;
 
 #[allow(unused)]
@@ -35,10 +35,6 @@ pub struct Game {
     /// are Non-Active Players (NAP).
     pub active_player: Entity,
 
-    /// The player, if any, that has priority right now. In some steps, like the
-    /// untap and cleanup steps, players do not normally receive priority.
-    pub priority_player: Option<Entity>,
-
     /// The current step in the game.
     step: Step,
 
@@ -56,13 +52,15 @@ pub struct Game {
     pending_triggers: (),
 }
 
+#[derive(Debug)]
 pub enum GameState {
     /// The game is processing. No players can do anything right now.
     Processing,
 
-    /// A player has priority and can start to take an action. `priority_player`
-    /// will be Some.
-    Priority,
+    /// A player has priority and can start to take an action. In some steps
+    /// like the untap and cleanup steps, players do not normally receive
+    /// priority.
+    Priority(Entity),
 
     /// The game has concluded.
     Complete(GameOutcome),
@@ -75,23 +73,22 @@ pub enum GameState {
     NeedInput(GameInput),
 }
 
+#[derive(Debug)]
 pub enum GameOutcome {
     Win(Entity),
 }
 
+#[derive(Debug)]
 pub struct GameInput {
     player: Entity,
     input: GameInputKind,
 }
 
+#[derive(Debug)]
 pub enum GameInputKind {
     ChooseAttackers,
     ChooseBlockers,
     ChooseBlockerOrder,
-
-    ChooseTarget {
-        options: Box<dyn Query<Output = Vec<Entity>>>,
-    },
 }
 
 impl Game {
@@ -123,9 +120,8 @@ impl Game {
             turn_number: 1,
             players_that_have_passed: HashSet::new(),
             active_player: player1,
-            priority_player: Some(player1),
             step: Step::Upkeep,
-            state: GameState::Priority,
+            state: GameState::Priority(player1),
             zones,
             pending_triggers: (),
         }
@@ -137,10 +133,18 @@ impl Game {
         query_object.query(&self.world)
     }
 
+    pub fn priority_player(&self) -> Option<Entity> {
+        if let GameState::Priority(player) = &self.state {
+            Some(*player)
+        } else {
+            None
+        }
+    }
+
     pub fn possible_actions(&self, player: Entity) -> Vec<Action> {
         let mut actions = vec![Action::Concede];
 
-        if self.priority_player == Some(player) {
+        if self.priority_player() == Some(player) {
             actions.push(Action::PassPriority);
         }
 
@@ -151,9 +155,7 @@ impl Game {
         log::debug!("Player {:?} attempting action {:?}", player, action);
 
         match action {
-            Action::Concede => {
-                todo!("let player {:?} concede", player)
-            }
+            Action::Concede => self.player_loses(player),
             Action::PassPriority => self.pass_priority(player),
             Action::CastSpell { spell } => {
                 unimplemented!("player {:?} casting spell {:?}", player, spell)
@@ -177,7 +179,33 @@ impl Game {
     }
 
     /// 704. State-Based Actions (https://mtg.gamepedia.com/State-based_action)
+    ///
+    /// 704.3. Whenever a player would get priority (see rule 117, “Timing and
+    ///        Priority”), the game checks for any of the listed conditions for
+    ///        state-based actions, then performs all applicable state-based
+    ///        actions simultaneously as a single event. If any state-based
+    ///        actions are performed as a result of a check, the check is
+    ///        repeated; otherwise all triggered abilities that are waiting to
+    ///        be put on the stack are put on the stack, then the check is
+    ///        repeated. Once no more state-based actions have been performed as
+    ///        the result of a check and no triggered abilities are waiting to
+    ///        be put on the stack, the appropriate player gets priority. This
+    ///        process also occurs during the cleanup step (see rule 514),
+    ///        except that if no state-based actions are performed as the result
+    ///        of the step’s first check and no triggered abilities are waiting
+    ///        to be put on the stack, then no player gets priority and the step
+    ///        ends.
     fn apply_state_based_actions(&mut self) {
+        loop {
+            if !self.apply_state_based_actions_step() {
+                break;
+            }
+        }
+    }
+
+    fn apply_state_based_actions_step(&mut self) -> bool {
+        let mut actions_performed = false;
+
         // Clear any effects attached to objects that no longer exist.
         {
             let mut entities_to_despawn = Vec::new();
@@ -189,6 +217,7 @@ impl Game {
             for (entity, (attached,)) in query.iter() {
                 if !self.world.contains(attached.target) {
                     entities_to_despawn.push(entity);
+                    actions_performed = true;
                 }
             }
 
@@ -208,6 +237,7 @@ impl Game {
                     // TODO: Check if player is exempt from this SBA, like via
                     // Phyrexian Unlife.
                     player.has_lost = true;
+                    actions_performed = true;
                 }
             }
         }
@@ -317,10 +347,12 @@ impl Game {
         //        714, “Saga Cards.”
         //
         // TODO
+
+        actions_performed
     }
 
     fn pass_priority(&mut self, player: Entity) {
-        if self.priority_player != Some(player) {
+        if self.priority_player() != Some(player) {
             log::warn!(
                 "Player {:?} tried to pass priority but is not the priority player",
                 player
@@ -340,7 +372,7 @@ impl Game {
         if self.players_that_have_passed.contains(&next_player) {
             log::debug!("All players have passed");
 
-            self.priority_player = None;
+            self.state = GameState::Processing;
             self.players_that_have_passed.clear();
 
             let stack = &self.zones[&ZoneId::Stack];
@@ -350,8 +382,8 @@ impl Game {
                 self.resolve_one_from_stack();
             }
         } else {
-            // TODO: Do we need to apply state based actions here?
-            self.priority_player = Some(next_player);
+            self.apply_state_based_actions();
+            self.state = GameState::Priority(next_player);
         }
     }
 
@@ -427,7 +459,7 @@ impl Game {
                 // 503.1. The upkeep step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.priority_player = Some(self.active_player);
+                self.state = GameState::Priority(self.active_player);
 
                 // 503.1a Any abilities that triggered during the untap step and
                 //        any abilities that triggered at the beginning of the
@@ -448,7 +480,7 @@ impl Game {
 
                 // 504.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.priority_player = Some(self.active_player);
+                self.state = GameState::Priority(self.active_player);
             }
 
             // 505. Main Phase
@@ -463,7 +495,7 @@ impl Game {
 
                 // 505.5. Third, the active player gets priority. (See rule 117,
                 //        “Timing and Priority.”)
-                self.priority_player = Some(self.active_player);
+                self.state = GameState::Priority(self.active_player);
             }
 
             Step::BeginCombat
@@ -480,7 +512,7 @@ impl Game {
                 // 513.1. The end step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.priority_player = Some(self.active_player);
+                self.state = GameState::Priority(self.active_player);
             }
 
             // 514. Cleanup Step
@@ -497,8 +529,23 @@ impl Game {
                 //        permanents) is removed and all “until end of turn” and
                 //        “this turn” effects end. This turn-based action
                 //        doesn’t use the stack.
-                //
-                // TODO
+                let mut damage_to_remove = Vec::new();
+                for (entity, _damage) in self.world.query_mut::<(&Damage,)>() {
+                    damage_to_remove.push(entity);
+                }
+
+                for entity in damage_to_remove {
+                    let _ = self.world.remove_one::<Damage>(entity);
+                }
+
+                let mut to_despawn = Vec::new();
+                for (entity, _effect) in self.world.query_mut::<(&UntilEotEffect,)>() {
+                    to_despawn.push(entity);
+                }
+
+                for entity in to_despawn {
+                    let _ = self.world.despawn(entity);
+                }
 
                 // 514.3. Normally, no player receives priority during the
                 //        cleanup step, so no spells can be cast and no
@@ -514,8 +561,9 @@ impl Game {
                 //        priority. Players may cast spells and activate
                 //        abilities. Once the stack is empty and all players
                 //        pass in succession, another cleanup step begins.
-                //
-                // TODO
+                self.apply_state_based_actions();
+                // TODO: Put stuff onto the stack, give priority if there was
+                // anything.
 
                 self.end_current_step();
             }
@@ -524,6 +572,14 @@ impl Game {
 
     fn resolve_one_from_stack(&mut self) {
         todo!("resolve one entry from stack");
+    }
+
+    /// Marks the given player as having lost.
+    fn player_loses(&mut self, player: Entity) {
+        // TODO: Support >2 players
+        let other_player = self.turn_order.iter().find(|p| **p != player).unwrap();
+
+        self.state = GameState::Complete(GameOutcome::Win(*other_player));
     }
 
     /// Returns the next player, in turn order. This is used for priority
@@ -563,8 +619,8 @@ impl Debug for Game {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "Turn: #{}   AP: {:?}   PP: {:?}   Step: {:?}",
-            self.turn_number, self.active_player, self.priority_player, self.step
+            "Turn: #{}   AP: {:?}   Step: {:?}   State: {:?}",
+            self.turn_number, self.active_player, self.step, self.state
         )
     }
 }
