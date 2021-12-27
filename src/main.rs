@@ -104,7 +104,7 @@ mod test {
             Permanent { tapped: false },
         ));
 
-        let _giant_growth = game.world.spawn((
+        let giant_growth = game.world.spawn((
             UntilEotEffect,
             AdjustPtEffect {
                 target: bear,
@@ -122,6 +122,11 @@ mod test {
             game.do_action(game.priority_player().unwrap(), Action::PassPriority);
         }
 
+        assert!(
+            game.world.entity(giant_growth).is_err(),
+            "Giant Growth was not cleaned up at turn end"
+        );
+        let bear_pt = game.query(QueryPt(bear)).unwrap();
         assert_eq!(bear_pt, PtValue::new(2, 2));
     }
 
