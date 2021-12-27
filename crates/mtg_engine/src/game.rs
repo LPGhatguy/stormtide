@@ -6,10 +6,11 @@ use std::fmt::{self, Debug};
 use hecs::{Entity, World};
 
 use crate::action::Action;
-use crate::components::{AttachedToEntity, Creature, Damage, Permanent, Player, UntilEotEffect};
+use crate::components::{
+    AttachedToEntity, Creature, Damage, Object, Permanent, Player, UntilEotEffect,
+};
 use crate::queries::Query;
 
-#[allow(unused)]
 pub struct Game {
     /// The source of information for all game objects in all zones, as well as
     /// active effects and anything that can be targeted.
@@ -19,11 +20,11 @@ pub struct Game {
     next_timestamp: u64,
 
     /// The turn order and list of player entities in the game.
-    pub turn_order: Vec<Entity>,
+    turn_order: Vec<Entity>,
 
     /// The current turn. Starts at 0 before the first untap step, then proceeds
     /// at the end of each round of turns.
-    pub turn_number: usize,
+    turn_number: u64,
 
     /// For this round of priority passing, tracks which players have had a
     /// chance to take an action and have already passed priority.
@@ -33,7 +34,7 @@ pub struct Game {
 
     /// The Active Player (AP) is the player whose turn it is. All other players
     /// are Non-Active Players (NAP).
-    pub active_player: Entity,
+    active_player: Entity,
 
     /// The current step in the game.
     step: Step,
@@ -97,8 +98,8 @@ impl Game {
     pub fn new() -> Self {
         let mut world = World::new();
 
-        let player1 = world.spawn((Player::new(),));
-        let player2 = world.spawn((Player::new(),));
+        let player1 = world.spawn((Player::new("Player 1".to_owned()),));
+        let player2 = world.spawn((Player::new("Player 2".to_owned()),));
 
         let players = vec![player1, player2];
 
@@ -135,22 +136,29 @@ impl Game {
         query_object.query(&self.world)
     }
 
+    pub fn active_player(&self) -> Entity {
+        self.active_player
+    }
+
+    pub fn turn_number(&self) -> u64 {
+        self.turn_number
+    }
+
+    pub fn zone(&self, id: ZoneId) -> Option<&Zone> {
+        self.zones.get(&id)
+    }
+
+    /// Returns all players in turn order.
+    pub fn players(&self) -> &[Entity] {
+        &self.turn_order
+    }
+
     pub fn priority_player(&self) -> Option<Entity> {
         if let GameState::Priority(player) = &self.state {
             Some(*player)
         } else {
             None
         }
-    }
-
-    pub fn possible_actions(&self, player: Entity) -> Vec<Action> {
-        let mut actions = vec![Action::Concede];
-
-        if self.priority_player() == Some(player) {
-            actions.push(Action::PassPriority);
-        }
-
-        actions
     }
 
     pub fn do_action(&mut self, player: Entity, action: Action) {
@@ -774,6 +782,17 @@ impl Game {
                 .entity(attacker)
                 .map_err(|_| format!("Entity {:?} did not exist", attacker))?;
 
+            let object = entity
+                .get::<Object>()
+                .ok_or_else(|| format!("Entity {:?} is not an Object", attacker))?;
+
+            if object.controller != Some(player) {
+                return Err(format!(
+                    "Entity {:?} is not controlled by {:?}",
+                    attacker, player
+                ));
+            }
+
             // FIXME: Use type query instead to figure out whether something is
             // a permanent.
             let permanent = entity
@@ -906,7 +925,7 @@ impl Game {
         self.state = GameState::Priority(self.active_player);
     }
 
-    fn choose_blockers(&mut self, player: Entity, blockers: &[Entity]) {
+    fn choose_blockers(&mut self, _player: Entity, _blockers: &[Entity]) {
         // TODO
     }
 }
@@ -967,7 +986,6 @@ pub enum Step {
 ///        exile, and command. Some older cards also use the ante zone. Each
 ///        player has their own library, hand, and graveyard. The other zones
 ///        are shared by all players.
-#[allow(unused)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ZoneId {
     Library(Entity),
@@ -980,7 +998,7 @@ pub enum ZoneId {
 }
 
 #[derive(Debug)]
-struct Zone {
+pub struct Zone {
     members: Vec<Entity>,
 }
 
@@ -991,7 +1009,11 @@ impl Zone {
         }
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.members.is_empty()
+    }
+
+    pub fn members(&self) -> &[Entity] {
+        &self.members
     }
 }

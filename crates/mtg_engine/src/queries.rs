@@ -83,7 +83,7 @@ pub struct QueryMaxHandSize(pub Entity);
 impl Query for QueryMaxHandSize {
     type Output = i64;
 
-    fn query(&self, world: &World) -> Self::Output {
+    fn query(&self, _world: &World) -> Self::Output {
         // TODO: Look for affects that alter maximum hand size.
         7
     }

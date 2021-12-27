@@ -10,11 +10,14 @@ pub mod pt;
 pub mod queries;
 pub mod types;
 
+pub use hecs;
+
 #[cfg(test)]
 mod test {
     use crate::action::Action;
     use crate::components::{Creature, Object, Permanent, UntilEotEffect};
-    use crate::game::Game;
+    use crate::game::{Game, ZoneId};
+    use crate::ident::Ident;
     use crate::pt::{AdjustPtEffect, PtCharacteristic, PtValue};
     use crate::queries::QueryPt;
 
@@ -22,12 +25,14 @@ mod test {
     fn until_eot_pt_adjust() {
         let mut game = Game::new();
 
-        let player1 = game.turn_order[0];
+        let player1 = game.players()[0];
 
         let bear = game.world.spawn((
             Object {
+                name: Ident::new("Grizzly Bears"),
+                zone: ZoneId::Battlefield,
                 owner: player1,
-                controller: player1,
+                controller: Some(player1),
             },
             Creature {
                 pt: PtCharacteristic::Normal(PtValue {
@@ -52,7 +57,7 @@ mod test {
         let bear_pt = game.query(QueryPt(bear)).unwrap();
         assert_eq!(bear_pt, PtValue::new(5, 5));
 
-        while game.turn_number < 2 {
+        while game.turn_number() < 2 {
             game.do_action(game.priority_player().unwrap(), Action::PassPriority);
         }
 
@@ -68,7 +73,7 @@ mod test {
     fn turns_pass() {
         let mut game = Game::new();
 
-        while game.turn_number < 3 {
+        while game.turn_number() < 3 {
             game.do_action(game.priority_player().unwrap(), Action::PassPriority);
         }
     }
