@@ -7,7 +7,7 @@ use hecs::{Entity, World};
 
 use crate::action::Action;
 use crate::components::{AttachedToEntity, Creature, Damage, Permanent, Player, UntilEotEffect};
-use crate::queries::{Query, QueryCreatures};
+use crate::queries::Query;
 
 #[allow(unused)]
 pub struct Game {

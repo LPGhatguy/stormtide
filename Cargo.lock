@@ -131,10 +131,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3728d817d99e5ac407411fa471ff9800a778d88a24685968b36824eaf4bee400"
 
 [[package]]
-name = "mtg3"
+name = "mtg_engine"
 version = "0.1.0"
 dependencies = [
- "env_logger",
  "hecs",
  "log",
  "maplit",
@@ -164,6 +163,15 @@ name = "regex-syntax"
 version = "0.6.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26412eb97c6b088a6997e05f69403a802a92d520de2f8e63c2b65f9e0f47c4e8"
+
+[[package]]
+name = "scratch"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "log",
+ "mtg_engine",
+]
 
 [[package]]
 name = "serde"

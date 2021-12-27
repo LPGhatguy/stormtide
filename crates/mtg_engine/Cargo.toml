@@ -1,0 +1,11 @@
+[package]
+name = "mtg_engine"
+version = "0.1.0"
+authors = ["Lucien Greathouse <me@lpghatguy.com>"]
+edition = "2021"
+
+[dependencies]
+hecs = "0.7.1"
+log = "0.4.14"
+maplit = "1.0.2"
+smol_str = "0.1.21"
