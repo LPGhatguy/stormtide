@@ -2,7 +2,7 @@ use eframe::{egui, epi};
 use egui::Ui;
 use mtg_engine::components::{Creature, Land, Object, Permanent, Player};
 use mtg_engine::game::{Game, ZoneId};
-use mtg_engine::hecs::{Entity, World};
+use mtg_engine::hecs::{Entity, EntityRef, World};
 use mtg_engine::ident::Ident;
 use mtg_engine::pt::{PtCharacteristic, PtValue};
 
@@ -19,13 +19,45 @@ impl epi::App for App {
         let player1 = self.game.players()[0];
         let player2 = self.game.players()[1];
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered_justified(|ui| {
+        egui::TopBottomPanel::top("player1 hand")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Player1's Hand");
                 widget_zone(ui, &self.game, ZoneId::Hand(player1));
-                widget_zone(ui, &self.game, ZoneId::Battlefield);
-                widget_zone(ui, &self.game, ZoneId::Hand(player2));
+            });
+
+        egui::Area::new("battlefield").show(ctx, |ui| {
+            ui.vertical_centered_justified(|ui| {
+                ui.heading("Battlefield: Player 1");
+                widget_zone_filter(ui, &self.game, ZoneId::Battlefield, |_game, entity| {
+                    let object = match entity.get::<Object>() {
+                        Some(o) => o,
+                        None => return false,
+                    };
+
+                    object.controller == Some(player1)
+                });
+
+                ui.separator();
+
+                ui.heading("Battlefield: Player 2");
+                widget_zone_filter(ui, &self.game, ZoneId::Battlefield, |_game, entity| {
+                    let object = match entity.get::<Object>() {
+                        Some(o) => o,
+                        None => return false,
+                    };
+
+                    object.controller == Some(player2)
+                });
             });
         });
+
+        egui::TopBottomPanel::bottom("player2 hand")
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.heading("Player 2's hand");
+                widget_zone(ui, &self.game, ZoneId::Hand(player2));
+            });
     }
 }
 
@@ -52,19 +84,31 @@ fn zone_label(world: &World, zone: ZoneId) -> String {
 }
 
 fn widget_zone(ui: &mut Ui, game: &Game, zone_id: ZoneId) {
+    widget_zone_filter(ui, game, zone_id, |_, _| true);
+}
+
+fn widget_zone_filter<F: Fn(&Game, &EntityRef<'_>) -> bool>(
+    ui: &mut Ui,
+    game: &Game,
+    zone_id: ZoneId,
+    filter: F,
+) {
     ui.vertical(|ui| {
         let zone = match game.zone(zone_id) {
             Some(z) => z,
             None => return,
         };
 
-        ui.heading(zone_label(&game.world, zone_id));
         ui.horizontal(|ui| {
             for &member in zone.members() {
                 let entity = match game.world.entity(member) {
                     Ok(o) => o,
                     Err(_) => continue,
                 };
+
+                if !filter(game, &entity) {
+                    continue;
+                }
 
                 egui::Frame::none()
                     .margin((5.0, 5.0))
