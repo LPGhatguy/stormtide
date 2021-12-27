@@ -2,8 +2,9 @@
 mod components;
 
 use mtg_engine::{
-    components::{Creature, Land, Object, Permanent},
+    components::{Creature, Land, Object, Permanent, Player},
     game::{Game, ZoneId},
+    hecs::Entity,
     ident::Ident,
     pt::{PtCharacteristic, PtValue},
 };
@@ -30,35 +31,63 @@ impl yew::Component for App {
     }
 
     fn view(&self, _ctx: &yew::Context<Self>) -> yew::Html {
-        let players = vec![
-            components::PlayerProps {
-                top: true,
-                name: "lpg".to_owned(),
-                life: 20,
-                hand: vec![(); 3],
-                battlefield: vec![(); 2],
-            },
-            components::PlayerProps {
-                top: false,
-                name: "eryn".to_owned(), // ;)
-                life: 20,
-                hand: vec![(); 7],
-                battlefield: vec![(); 4],
-            },
-        ];
+        let player1 = self.game.players()[0];
+        let player2 = self.game.players()[1];
+
+        let players: Vec<_> = [
+            player_props(&self.game, player1),
+            player_props(&self.game, player2),
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
 
         yew::html! {
             <components::Layout players={ players } />
         }
     }
+}
 
-    fn changed(&mut self, ctx: &yew::Context<Self>) -> bool {
-        true
-    }
+fn player_props(game: &Game, player_id: Entity) -> Option<components::PlayerProps> {
+    let turn_order = game
+        .players()
+        .iter()
+        .position(|p| *p == player_id)
+        .unwrap_or(0);
+    let entity = game.world.entity(player_id).ok()?;
+    let player = entity.get::<Player>()?;
 
-    fn rendered(&mut self, ctx: &yew::Context<Self>, first_render: bool) {}
+    let hand = game
+        .zone(ZoneId::Hand(player_id))
+        .map(|zone| zone.members().iter().map(|_| ()).collect::<Vec<_>>())
+        .unwrap_or_else(Vec::new);
 
-    fn destroy(&mut self, ctx: &yew::Context<Self>) {}
+    let battlefield = game
+        .zone(ZoneId::Battlefield)
+        .map(|zone| {
+            zone.members()
+                .iter()
+                .filter_map(|entity| {
+                    let entity = game.world.entity(*entity).ok()?;
+                    let object = entity.get::<Object>()?;
+
+                    if object.controller == Some(player_id) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_else(Vec::new);
+
+    Some(components::PlayerProps {
+        top: turn_order == 0,
+        name: player.name.clone(),
+        life: player.life,
+        hand,
+        battlefield,
+    })
 }
 
 fn main() {
