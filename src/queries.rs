@@ -89,6 +89,7 @@ impl Query for QueryMaxHandSize {
     }
 }
 
+#[derive(Debug)]
 pub struct QueryCreatures;
 
 impl Query for QueryCreatures {

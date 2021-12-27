@@ -11,6 +11,14 @@ pub enum Action {
 
     PassPriority,
 
+    ChooseAttackers {
+        attackers: Vec<Entity>,
+    },
+
+    ChooseBlockers {
+        blockers: Vec<Entity>,
+    },
+
     /// 117.1a A player may cast an instant spell any time they have priority. A
     ///        player may cast a noninstant spell during their main phase any
     ///        time they have priority and the stack is empty.
