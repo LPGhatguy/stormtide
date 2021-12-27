@@ -1,17 +1,13 @@
 use eframe::{egui, epi};
 use egui::Ui;
-use mtg_engine::components::{Object, Player};
+use mtg_engine::components::{Creature, Land, Object, Permanent, Player};
 use mtg_engine::game::{Game, ZoneId};
 use mtg_engine::hecs::{Entity, World};
+use mtg_engine::ident::Ident;
+use mtg_engine::pt::{PtCharacteristic, PtValue};
 
 struct App {
     game: Game,
-}
-
-impl App {
-    fn new() -> Self {
-        Self { game: Game::new() }
-    }
 }
 
 impl epi::App for App {
@@ -19,7 +15,7 @@ impl epi::App for App {
         "MtG"
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let player1 = self.game.players()[0];
         let player2 = self.game.players()[1];
 
@@ -70,20 +66,65 @@ fn widget_zone(ui: &mut Ui, game: &Game, zone_id: ZoneId) {
                     Err(_) => continue,
                 };
 
-                ui.vertical(|ui| {
-                    if let Some(object) = entity.get::<Object>() {
-                        ui.label(&object.name);
-                    } else {
-                        ui.label("(Not an Object)");
-                    }
-                });
+                egui::Frame::none()
+                    .margin((5.0, 5.0))
+                    .stroke(egui::Stroke::new(2.0, egui::Rgba::from_gray(0.3)))
+                    .show(ui, |ui| {
+                        if let Some(object) = entity.get::<Object>() {
+                            ui.label(&object.name);
+                        } else {
+                            ui.label("(Not an Object)");
+                        }
+                    });
             }
         });
     });
 }
 
 fn main() {
-    let app = App::new();
+    let mut game = Game::new();
+
+    let player1 = game.players()[0];
+
+    let _forest1 = game.world.spawn((
+        Object {
+            name: Ident::new("Forest"),
+            zone: ZoneId::Battlefield,
+            owner: player1,
+            controller: Some(player1),
+        },
+        Land,
+        Permanent { tapped: false },
+    ));
+    let _forest2 = game.world.spawn((
+        Object {
+            name: Ident::new("Forest"),
+            zone: ZoneId::Battlefield,
+            owner: player1,
+            controller: Some(player1),
+        },
+        Land,
+        Permanent { tapped: false },
+    ));
+    let _bear = game.world.spawn((
+        Object {
+            name: Ident::new("Grizzly Bears"),
+            zone: ZoneId::Battlefield,
+            owner: player1,
+            controller: Some(player1),
+        },
+        Creature {
+            pt: PtCharacteristic::Normal(PtValue {
+                power: 2,
+                toughness: 2,
+            }),
+        },
+        Permanent { tapped: false },
+    ));
+
+    game.HACK_rebuild_zone_index();
+
+    let app = App { game };
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(app), native_options);
 }
