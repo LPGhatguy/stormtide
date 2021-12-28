@@ -20,7 +20,7 @@ pub fn player(props: &PlayerProps) -> Html {
     let outer = use_style!("
         display: flex;
         flex-grow: 1;
-        background-color: #4d5560;
+        background-color: #242526;
         width: 100%;
         height: 100%;
     ");
@@ -29,10 +29,8 @@ pub fn player(props: &PlayerProps) -> Html {
         display: flex;
         flex: 0 0 10rem;
         flex-direction: column;
-        background-color: rgba(0, 0, 0, 0.2);
+        background-color: #0f0f10;
         color: #fefefe;
-        box-shadow: 2px 0 10px 1px rgba(0, 0, 0, 0.4);
-        z-index: 9999;
     ");
 
     let identity = use_style!("
@@ -112,7 +110,7 @@ pub fn player(props: &PlayerProps) -> Html {
 
     let hand = use_style!("
         display: flex;
-        background-color: #252a32;
+        background-color: #18191a;
         flex: 0 0 9rem;
         padding: 0.3rem;
         gap: 0.3rem;
