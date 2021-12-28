@@ -344,15 +344,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
-name = "mtg-yew"
+name = "mtg"
 version = "0.1.0"
 dependencies = [
- "log",
+ "js-sys",
  "mtg_engine",
- "once_cell",
- "stylist",
- "wasm-logger",
- "yew",
+ "serde",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -367,6 +365,18 @@ dependencies = [
  "serde",
  "serde_json",
  "smol_str",
+]
+
+[[package]]
+name = "mtg_yew"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "mtg_engine",
+ "once_cell",
+ "stylist",
+ "wasm-logger",
+ "yew",
 ]
 
 [[package]]

@@ -1,0 +1,14 @@
+{
+  "name": "mtg-frontend",
+  "version": "0.0.0",
+  "devDependencies": {
+    "parcel": "^2.0.1",
+    "mtg": "file:pkg"
+  },
+  "scripts": {
+    "build-wasm": "wasm-pack build --target web",
+    "watch-wasm": "watchexec -- npm run build-wasm",
+    "build": "npm run build-wasm && parcel build js/index.html",
+    "serve": "npm run build-wasm && parcel serve js/index.html"
+  }
+}

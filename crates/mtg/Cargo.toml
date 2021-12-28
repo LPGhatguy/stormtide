@@ -1,0 +1,13 @@
+[package]
+name = "mtg"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+js-sys = "0.3.55"
+mtg_engine = { path = "../mtg_engine" }
+serde = { version = "1.0.132", features = ["derive"] }
+wasm-bindgen = { version = "0.2.78", features = ["serde-serialize"] }

@@ -1,0 +1,10 @@
+# npm output
+/node_modules
+
+# parcel output
+/.parcel-cache
+/dist
+
+# wasm-pack output
+/pkg
+
