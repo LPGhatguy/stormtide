@@ -1,9 +1,10 @@
+use std::borrow::Borrow;
 use std::fmt::{self, Debug, Display};
 
 use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct Ident(SmolStr);
 
@@ -16,6 +17,12 @@ impl Ident {
 impl AsRef<str> for Ident {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+impl Borrow<str> for Ident {
+    fn borrow(&self) -> &str {
+        self.0.borrow()
     }
 }
 

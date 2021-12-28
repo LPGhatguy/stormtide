@@ -7,7 +7,9 @@ use super::Card;
 pub struct PlayerProps {
     pub top: bool,
     pub name: String,
+    pub image: String,
     pub life: i64,
+    pub library_count: u64,
     pub hand: Vec<String>,
     pub battlefield: Vec<String>,
 }
@@ -18,41 +20,70 @@ pub fn player(props: &PlayerProps) -> Html {
     let outer = use_style!("
         display: flex;
         flex-grow: 1;
+        background-color: #4d5560;
         width: 100%;
         height: 100%;
-        border: 8px solid black;
     ");
 
     let left = use_style!("
         display: flex;
         flex: 0 0 10rem;
         flex-direction: column;
-        background-color: #999;
+        background-color: rgba(0, 0, 0, 0.2);
+        color: #fefefe;
+        box-shadow: 2px 0 10px 1px rgba(0, 0, 0, 0.4);
+        z-index: 9999;
+    ");
+
+    let identity = use_style!("
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin: 1rem;
     ");
 
     let portrait = use_style!("
-        display: inline-block;
-        background-color: #e9e;
+        display: flex;
+        flex: 0 0 2rem;
         aspect-ratio: 1 / 1;
-        margin: 1rem 2rem;
+
+        img {
+            width: 100%;
+            height: 100%;
+        }
     ");
 
     let name = use_style!("
+        flex: 1 1;
         font-size: 1.2rem;
         font-weight: bold;
         text-align: center;
-        margin-bottom: 1rem;
     ");
 
     let separator = use_style!("
         height: 1px;
-        background-color: black;
+        background-color: #fefefe;
     ");
 
     let life_total = use_style!("
         font-size: 1.4rem;
         text-align: center;
     ");
+
+    let library = use_style!("
+        margin: 1rem;
+        aspect-ratio: 5 / 7;
+        background-image: url(${ card_back });
+        background-size: contain;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-weight: bold;
+        -webkit-text-stroke: 2px black;
+        color: white;
+        font-size: 2rem;
+    ", card_back = crate::symbols::CARD_BACK);
 
     let zone_direction = if props.top {
         "column-reverse"
@@ -64,14 +95,12 @@ pub fn player(props: &PlayerProps) -> Html {
         display: flex;
         flex: 1 0 40rem;
         flex-direction: ${ direction };
-        background-color: #eee;
     ", direction = zone_direction);
 
     let battlefield = use_style!("
         display: flex;
         flex-direction: ${ direction };
         flex: 1 0 10rem;
-        background-color: #333;
     ", direction = zone_direction);
 
     let battlefield_row = use_style!("
@@ -83,8 +112,8 @@ pub fn player(props: &PlayerProps) -> Html {
 
     let hand = use_style!("
         display: flex;
-        background-color: #e99;
-        flex: 0 0 12rem;
+        background-color: #252a32;
+        flex: 0 0 9rem;
         padding: 0.3rem;
         gap: 0.3rem;
     ");
@@ -92,10 +121,15 @@ pub fn player(props: &PlayerProps) -> Html {
     html! {
         <div class={ outer }>
             <div class={ left }>
-                <div class={ portrait }></div>
-                <div class={ name }>{ props.name.to_string() }</div>
+                <div class={ identity }>
+                    <div class={ portrait }>
+                        <img src={ props.image.clone() } />
+                    </div>
+                    <div class={ name }>{ props.name.to_string() }</div>
+                </div>
                 <div class={ separator } />
                 <div class={ life_total }>{ props.life }</div>
+                <div class={ library }>{ props.library_count }</div>
             </div>
             <div class={ main }>
                 <div class={ battlefield }>
@@ -130,6 +164,8 @@ pub fn layout(props: &LayoutProps) -> Html {
     let outer = use_style!("
         display: flex;
         flex-direction: column;
+        gap: 20px;
+        background-color: black;
         flex-grow: 1;
         width: 100%;
         height: 100%;

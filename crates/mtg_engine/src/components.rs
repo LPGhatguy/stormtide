@@ -5,9 +5,9 @@ use std::collections::BTreeSet;
 use hecs::Entity;
 
 use crate::counters::Counter;
-use crate::game::ZoneId;
 use crate::ident::Ident;
 use crate::pt::PtCharacteristic;
+use crate::zone::ZoneId;
 
 /// A component that indicates that this entity is a player.
 #[derive(Debug)]

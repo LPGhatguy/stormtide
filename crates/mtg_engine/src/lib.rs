@@ -10,41 +10,30 @@ pub mod object_db;
 pub mod pt;
 pub mod queries;
 pub mod types;
+pub mod zone;
 
 pub use hecs;
 
 #[cfg(test)]
 mod test {
     use crate::action::Action;
-    use crate::components::{Creature, Object, Permanent, UntilEotEffect};
-    use crate::game::{Game, ZoneId};
-    use crate::ident::Ident;
-    use crate::pt::{AdjustPtEffect, PtCharacteristic, PtValue};
+    use crate::components::UntilEotEffect;
+    use crate::game::Game;
+    use crate::pt::{AdjustPtEffect, PtValue};
     use crate::queries::QueryPt;
+    use crate::zone::ZoneId;
 
     #[test]
     fn until_eot_pt_adjust() {
         let mut game = Game::new();
+        let grizzly_bears = game.object_db().card_id("Grizzly Bears").unwrap();
 
         let player1 = game.players()[0];
+        let bear = game
+            .create_card(grizzly_bears, ZoneId::Battlefield, player1)
+            .unwrap();
 
-        let bear = game.world.spawn((
-            Object {
-                name: Ident::new("Grizzly Bears"),
-                zone: ZoneId::Battlefield,
-                owner: player1,
-                controller: Some(player1),
-            },
-            Creature {
-                pt: PtCharacteristic::Normal(PtValue {
-                    power: 2,
-                    toughness: 2,
-                }),
-            },
-            Permanent { tapped: false },
-        ));
-
-        let giant_growth = game.world.spawn((
+        let giant_growth = game.world_mut().spawn((
             UntilEotEffect,
             AdjustPtEffect {
                 target: bear,
@@ -63,7 +52,7 @@ mod test {
         }
 
         assert!(
-            game.world.entity(giant_growth).is_err(),
+            !game.world().contains(giant_growth),
             "Giant Growth was not cleaned up at turn end"
         );
         let bear_pt = game.query(QueryPt(bear)).unwrap();

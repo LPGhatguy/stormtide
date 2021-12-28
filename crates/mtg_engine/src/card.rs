@@ -3,11 +3,13 @@
 use serde::{Deserialize, Serialize};
 
 use crate::cost::Cost;
+use crate::ident::Ident;
+use crate::pt::PtCharacteristic;
 use crate::types::{CardSubtype, CardSupertype, CardType};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CardDescriptor {
-    pub name: String,
+    pub name: Ident,
     pub types: Vec<CardType>,
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -21,4 +23,7 @@ pub struct CardDescriptor {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,
+
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pt: Option<PtCharacteristic>,
 }

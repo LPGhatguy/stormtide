@@ -3,18 +3,24 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Debug};
 
-use hecs::{Entity, World};
+use hecs::{Entity, EntityBuilder, World};
 
 use crate::action::Action;
 use crate::components::{
-    AttachedToEntity, Creature, Damage, Object, Permanent, Player, UntilEotEffect,
+    AttachedToEntity, Card, Creature, Damage, Object, Permanent, Player, UntilEotEffect,
 };
+use crate::object_db::{CardId, ObjectDb};
 use crate::queries::Query;
+use crate::types::CardType;
+use crate::zone::{Zone, ZoneId};
 
 pub struct Game {
+    /// A database containing objects that can be instantiated into the game.
+    object_db: ObjectDb,
+
     /// The source of information for all game objects in all zones, as well as
     /// active effects and anything that can be targeted.
-    pub world: World,
+    world: World,
 
     /// The next timestamp that will be assigned to an entity.
     next_timestamp: u64,
@@ -96,6 +102,7 @@ pub enum GameInputKind {
 
 impl Game {
     pub fn new() -> Self {
+        let object_db = ObjectDb::load();
         let mut world = World::new();
 
         let player1 = world.spawn((Player::new("Player 1".to_owned()),));
@@ -117,6 +124,7 @@ impl Game {
         }
 
         Self {
+            object_db,
             world,
             next_timestamp: 0,
             turn_order: players,
@@ -134,14 +142,117 @@ impl Game {
     #[allow(non_snake_case)]
     pub fn HACK_rebuild_zone_index(&mut self) {
         for zone in self.zones.values_mut() {
-            zone.members.clear();
+            zone.clear();
         }
 
         for (entity, (object,)) in self.world.query_mut::<(&Object,)>() {
             if let Some(zone) = self.zones.get_mut(&object.zone) {
-                zone.members.push(entity);
+                zone.add(entity);
             }
         }
+    }
+
+    pub fn create_card(&mut self, id: CardId, zone_id: ZoneId, owner: Entity) -> Option<Entity> {
+        let zone = self.zones.get_mut(&zone_id)?;
+        let descriptor = self.object_db.card(id)?;
+
+        // 109.4. Only objects on the stack or on the battlefield have a
+        //        controller. Objects that are neither on the stack nor on the
+        //        battlefield aren’t controlled by any player. See rule 108.4.
+        let controller = if zone_id == ZoneId::Battlefield || zone_id == ZoneId::Stack {
+            Some(owner)
+        } else {
+            None
+        };
+
+        let mut builder = EntityBuilder::new();
+        builder.add(Object {
+            name: descriptor.name.clone(),
+            zone: zone_id,
+            owner,
+            controller,
+        });
+        builder.add(Card {});
+
+        if descriptor.types.contains(&CardType::Creature) {
+            let pt = descriptor.pt?;
+            builder.add(Creature { pt });
+        }
+
+        // 110.1. A permanent is a card or token on the battlefield. A permanent
+        //        remains on the battlefield indefinitely. A card or token
+        //        becomes a permanent as it enters the battlefield and it stops
+        //        being a permanent as it’s moved to another zone by an effect
+        //        or rule.
+        if zone_id == ZoneId::Battlefield {
+            builder.add(Permanent { tapped: false });
+        }
+
+        let entity = self.world.spawn(builder.build());
+        zone.add(entity);
+
+        Some(entity)
+    }
+
+    pub fn move_object_to_zone(&mut self, object_id: Entity, zone_id: ZoneId) -> Option<()> {
+        if !self.zones.contains_key(&zone_id) {
+            return None;
+        }
+
+        let mut object = self.world.get_mut::<Object>(object_id).ok()?;
+        let old_zone_id = object.zone;
+        if zone_id == old_zone_id {
+            return Some(());
+        }
+
+        let old_zone = self.zones.get_mut(&old_zone_id)?;
+        old_zone.remove(object_id);
+
+        // Panic safety: checked when calling contains_key above
+        let new_zone = self.zones.get_mut(&zone_id).unwrap();
+        object.zone = zone_id;
+        new_zone.add(object_id);
+
+        // 110.2. A permanent’s owner is the same as the owner of the card that
+        //        represents it (unless it’s a token; see rule 111.2). A
+        //        permanent’s controller is, by default, the player under whose
+        //        control it entered the battlefield. Every permanent has a
+        //        controller.
+        //
+        // 110.2a If an effect instructs a player to put an object onto the
+        //        battlefield, that object enters the battlefield under that
+        //        player’s control unless the effect states otherwise.
+        object.controller = Some(object.owner);
+
+        drop(object);
+
+        // 110.1. A permanent is a card or token on the battlefield. A permanent
+        //        remains on the battlefield indefinitely. A card or token
+        //        becomes a permanent as it enters the battlefield and it stops
+        //        being a permanent as it’s moved to another zone by an effect
+        //        or rule.
+        if zone_id == ZoneId::Battlefield {
+            self.world
+                .insert_one(object_id, Permanent { tapped: false })
+                .unwrap();
+        } else if old_zone_id == ZoneId::Battlefield {
+            let _ = self.world.remove_one::<Permanent>(object_id);
+        }
+
+        Some(())
+    }
+
+    pub fn object_db(&self) -> &ObjectDb {
+        &self.object_db
+    }
+
+    pub fn world(&self) -> &World {
+        &self.world
+    }
+
+    /// This function will go away at some point.
+    pub fn world_mut(&mut self) -> &mut World {
+        &mut self.world
     }
 
     /// Resolve a given query to compute a property of the game state, like a
@@ -160,6 +271,10 @@ impl Game {
 
     pub fn zone(&self, id: ZoneId) -> Option<&Zone> {
         self.zones.get(&id)
+    }
+
+    pub fn zone_mut(&mut self, id: ZoneId) -> Option<&mut Zone> {
+        self.zones.get_mut(&id)
     }
 
     /// Returns all players in turn order.
@@ -993,41 +1108,4 @@ pub enum Step {
     // 512.1. The ending phase consists of two steps: end and cleanup.
     End,
     Cleanup,
-}
-
-/// 400.1. A zone is a place where objects can be during a game. There are
-///        normally seven zones: library, hand, battlefield, graveyard, stack,
-///        exile, and command. Some older cards also use the ante zone. Each
-///        player has their own library, hand, and graveyard. The other zones
-///        are shared by all players.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ZoneId {
-    Library(Entity),
-    Hand(Entity),
-    Graveyard(Entity),
-    Stack,
-    Battlefield,
-    Exile,
-    Command,
-}
-
-#[derive(Debug)]
-pub struct Zone {
-    members: Vec<Entity>,
-}
-
-impl Zone {
-    fn new() -> Self {
-        Self {
-            members: Vec::new(),
-        }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.members.is_empty()
-    }
-
-    pub fn members(&self) -> &[Entity] {
-        &self.members
-    }
 }

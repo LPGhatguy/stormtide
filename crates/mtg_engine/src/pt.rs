@@ -3,9 +3,10 @@
 use std::fmt;
 
 use hecs::Entity;
+use serde::{Deserialize, Serialize};
 
 /// Container for power and toughness, helping simplify calculations.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct PtValue {
     pub power: i64,
     pub toughness: i64,
@@ -26,7 +27,7 @@ impl fmt::Display for PtValue {
 /// Represent base power and toughness that can be present on a creature. Some
 /// creatures have special rules that determine their base power and toughness,
 /// which can be further affected by other effects.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum PtCharacteristic {
     Normal(PtValue),
 }

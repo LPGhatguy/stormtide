@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
 use crate::card::CardDescriptor;
+use crate::ident::Ident;
 
 static CARDS_JSON: &str = include_str!("./cards.json");
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CardId(usize);
 
 pub struct ObjectDb {
     cards: Vec<CardDescriptor>,
-    card_name_to_index: HashMap<String, usize>,
+    card_name_to_index: HashMap<Ident, usize>,
 }
 
 impl ObjectDb {
