@@ -1,5 +1,5 @@
-#[rustfmt::skip::macros(use_style)]
 mod components;
+mod symbols;
 
 use mtg_engine::{
     components::{Creature, Land, Object, Permanent, Player},
