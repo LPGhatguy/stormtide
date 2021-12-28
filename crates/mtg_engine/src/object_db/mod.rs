@@ -2,33 +2,33 @@ use std::collections::HashMap;
 
 use crate::card::CardDescriptor;
 
-static DATA_JSON: &str = include_str!("./card_db.json");
+static CARDS_JSON: &str = include_str!("./cards.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CardId(usize);
 
-pub struct CardDb {
+pub struct ObjectDb {
     cards: Vec<CardDescriptor>,
-    name_to_index: HashMap<String, usize>,
+    card_name_to_index: HashMap<String, usize>,
 }
 
-impl CardDb {
+impl ObjectDb {
     pub fn load() -> Self {
-        let cards: Vec<CardDescriptor> = serde_json::from_str(DATA_JSON).unwrap();
+        let cards: Vec<CardDescriptor> = serde_json::from_str(CARDS_JSON).unwrap();
 
-        let mut name_to_index = HashMap::new();
+        let mut card_name_to_index = HashMap::new();
         for (index, card) in cards.iter().enumerate() {
-            name_to_index.insert(card.name.clone(), index);
+            card_name_to_index.insert(card.name.clone(), index);
         }
 
         Self {
             cards,
-            name_to_index,
+            card_name_to_index,
         }
     }
 
     pub fn card_id(&self, name: &str) -> Option<CardId> {
-        self.name_to_index.get(name).copied().map(CardId)
+        self.card_name_to_index.get(name).copied().map(CardId)
     }
 
     pub fn card(&self, id: CardId) -> Option<&CardDescriptor> {
@@ -47,7 +47,7 @@ mod test {
 
     #[test]
     fn loads() {
-        let db = CardDb::load();
+        let db = ObjectDb::load();
         println!("{:?}", db.cards);
     }
 }

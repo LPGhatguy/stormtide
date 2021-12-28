@@ -2,11 +2,11 @@
 mod components;
 
 use mtg_engine::{
-    card_db::CardDb,
     components::{Creature, Land, Object, Permanent, Player},
     game::{Game, ZoneId},
     hecs::Entity,
     ident::Ident,
+    object_db::ObjectDb,
     pt::{PtCharacteristic, PtValue},
 };
 
@@ -47,7 +47,7 @@ impl yew::Component for App {
 }
 
 fn player_props(game: &Game, player_id: Entity) -> Option<components::PlayerProps> {
-    let db = CardDb::load();
+    let db = ObjectDb::load();
     let bear_image = db
         .card_by_name("Grizzly Bears")
         .unwrap()
