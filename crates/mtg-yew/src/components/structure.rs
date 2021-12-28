@@ -8,8 +8,8 @@ pub struct PlayerProps {
     pub top: bool,
     pub name: String,
     pub life: i64,
-    pub hand: Vec<()>,
-    pub battlefield: Vec<()>,
+    pub hand: Vec<String>,
+    pub battlefield: Vec<String>,
 }
 
 #[function_component(Player)]
@@ -100,9 +100,9 @@ pub fn player(props: &PlayerProps) -> Html {
             <div class={ main }>
                 <div class={ battlefield }>
                     <div class={ battlefield_row.clone() }>
-                        { props.battlefield.iter().map(|_| {
+                        { props.battlefield.iter().map(|image| {
                             html! {
-                                <Card image={ crate::GRIZZLY_BEARS } />
+                                <Card image={ image.clone() } />
                             }
                         }).collect::<Html>() }
                     </div>
@@ -110,8 +110,8 @@ pub fn player(props: &PlayerProps) -> Html {
                     </div>
                 </div>
                 <div class={ hand }>
-                    { props.hand.iter().map(|_| html! {
-                            <Card image={ crate::GIANT_GROWTH } />
+                    { props.hand.iter().map(|image| html! {
+                            <Card image={ image.clone() } />
                     }).collect::<Html>() }
                 </div>
             </div>

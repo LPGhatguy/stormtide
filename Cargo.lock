@@ -1141,6 +1141,8 @@ dependencies = [
  "hecs",
  "log",
  "maplit",
+ "serde",
+ "serde_json",
  "smol_str",
 ]
 

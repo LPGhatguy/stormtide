@@ -1,7 +1,10 @@
 use std::fmt::{self, Debug, Display};
 
+use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Ident(SmolStr);
 
 impl Ident {

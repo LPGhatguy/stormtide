@@ -5,12 +5,17 @@
 //!
 //! There are many kinds of cost for various spells and abilities in the game.
 
+use serde::{Deserialize, Serialize};
+
 /// An action or payment necessary to take another action or to stop another
 /// action from taking place. See rule 118, "Costs."
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct Cost {
     pub items: Vec<CostItem>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CostItem {
     Tap,
 
@@ -63,6 +68,7 @@ pub enum CostItem {
     SnowMana,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ManaColor {
     White,
     Blue,

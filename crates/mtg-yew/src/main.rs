@@ -2,15 +2,13 @@
 mod components;
 
 use mtg_engine::{
+    card_db::CardDb,
     components::{Creature, Land, Object, Permanent, Player},
     game::{Game, ZoneId},
     hecs::Entity,
     ident::Ident,
     pt::{PtCharacteristic, PtValue},
 };
-
-pub static GIANT_GROWTH: &str = "https://c1.scryfall.com/file/scryfall-cards/large/front/6/b/6b712e6e-eb48-4a71-b95d-ce343966b236.jpg";
-pub static GRIZZLY_BEARS: &str = "https://c1.scryfall.com/file/scryfall-cards/large/front/4/0/409f9b88-f03e-40b6-9883-68c14c37c0de.jpg";
 
 struct App {
     game: Game,
@@ -49,6 +47,16 @@ impl yew::Component for App {
 }
 
 fn player_props(game: &Game, player_id: Entity) -> Option<components::PlayerProps> {
+    let db = CardDb::load();
+    let bear_image = db
+        .card_by_name("Grizzly Bears")
+        .unwrap()
+        .image
+        .clone()
+        .unwrap();
+
+    let forest_image = db.card_by_name("Forest").unwrap().image.clone().unwrap();
+
     let turn_order = game
         .players()
         .iter()
@@ -59,7 +67,12 @@ fn player_props(game: &Game, player_id: Entity) -> Option<components::PlayerProp
 
     let hand = game
         .zone(ZoneId::Hand(player_id))
-        .map(|zone| zone.members().iter().map(|_| ()).collect::<Vec<_>>())
+        .map(|zone| {
+            zone.members()
+                .iter()
+                .map(|_| forest_image.clone())
+                .collect::<Vec<_>>()
+        })
         .unwrap_or_else(Vec::new);
 
     let battlefield = game
@@ -72,7 +85,7 @@ fn player_props(game: &Game, player_id: Entity) -> Option<components::PlayerProp
                     let object = entity.get::<Object>()?;
 
                     if object.controller == Some(player_id) {
-                        Some(())
+                        Some(bear_image.clone())
                     } else {
                         None
                     }
