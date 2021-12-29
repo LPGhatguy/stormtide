@@ -1,0 +1,27 @@
+html {
+	box-sizing: border-box;
+	font-size: 20px;
+	font-family: sans-serif;
+	height: 100%;
+}
+
+* {
+	max-width: 100%;
+	margin: 0;
+	padding: 0;
+	font: inherit;
+	box-sizing: inherit;
+}
+
+body {
+	min-height: 100%;
+	display: flex;
+	flex-direction: column;
+	background-color: #242526;
+	color: #fafafa;
+}
+
+#app {
+	display: flex;
+	flex: 1 0;
+}

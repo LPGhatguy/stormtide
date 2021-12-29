@@ -2,8 +2,11 @@
   "name": "mtg-frontend",
   "version": "0.0.0",
   "devDependencies": {
+    "mtg": "file:pkg",
     "parcel": "^2.0.1",
-    "mtg": "file:pkg"
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "styled-components": "^5.3.3"
   },
   "scripts": {
     "build-wasm": "wasm-pack build --target web",
