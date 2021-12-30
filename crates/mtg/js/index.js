@@ -3,6 +3,8 @@ import React from "react";
 import { render } from "react-dom";
 import styled from "styled-components";
 
+import Steps from "./components/Steps";
+
 import card_back from "../assets/card-back.png";
 import player1 from "../assets/player1.png";
 import player2 from "../assets/player2.png";
@@ -82,8 +84,6 @@ const GameContainer = styled.div`
 
 	display: flex;
 	flex-direction: column;
-	gap: 1rem;
-	background-color: black;
 `;
 
 const Player = styled.div`
@@ -117,7 +117,9 @@ function App({ game }) {
 
 	return (
 		<GameContainer>
-			{players}
+			{players[0]}
+			<Steps />
+			{players[1]}
 		</GameContainer>
 	);
 }
