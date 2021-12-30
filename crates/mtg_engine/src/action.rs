@@ -1,9 +1,11 @@
 //! Describes an action that a player can (potentially) take in the game.
 
 use hecs::Entity;
+use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Action {
     /// 104.3a A player can concede the game at any time. A player who concedes
     ///        leaves the game immediately. That player loses the game.

@@ -349,9 +349,11 @@ name = "mtg"
 version = "0.1.0"
 dependencies = [
  "js-sys",
+ "log",
  "mtg_engine",
  "serde",
  "wasm-bindgen",
+ "wasm-logger",
 ]
 
 [[package]]

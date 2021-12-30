@@ -1,4 +1,5 @@
 use mtg_engine::{
+    action::Action,
     components::{Object, Player},
     game::Game,
     hecs::Entity,
@@ -7,6 +8,11 @@ use mtg_engine::{
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen(js_name = "startLogging")]
+pub fn start_logging() {
+    wasm_logger::init(wasm_logger::Config::default());
+}
 
 #[wasm_bindgen(js_name = "Game")]
 pub struct JsGame {
@@ -20,6 +26,15 @@ impl JsGame {
         Self {
             inner: sample_game(),
         }
+    }
+
+    #[wasm_bindgen(js_name = "doAction")]
+    pub fn do_action(&mut self, player: JsValue, action: JsValue) {
+        log::info!("do_action {:?} {:?}", player, action);
+        let player: Entity = player.into_serde().unwrap();
+        let action: Action = action.into_serde().unwrap();
+
+        self.inner.do_action(player, action);
     }
 
     #[wasm_bindgen]
@@ -66,6 +81,14 @@ impl JsGame {
             .collect::<Vec<_>>();
 
         JsValue::from_serde(&output).unwrap()
+    }
+
+    pub fn step(&self) -> JsValue {
+        JsValue::from_serde(&self.inner.step()).unwrap()
+    }
+
+    pub fn state(&self) -> JsValue {
+        JsValue::from_serde(self.inner.state()).unwrap()
     }
 }
 

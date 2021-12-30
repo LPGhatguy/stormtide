@@ -10,16 +10,44 @@ const stepIds = [
 	"DeclareAttackers",
 	"DeclareBlockers",
 	"CombatDamage",
-	"EndOfCombat",
+	"EndCombat",
 	"Main2",
 	"End",
 	"Cleanup"
 ];
 
 const stepLabelOverrides = {
-	"Main1": "Main #1",
-	"Main2": "Main #2",
+	"Main1": "Main",
+	"Main2": "Main",
+	"BeginCombat": "Begin",
+	"DeclareAttackers": "Attackers",
+	"DeclareBlockers": "Blockers",
+	"CombatDamage": "Damage",
+	"EndCombat": "End",
 }
+
+const phases = [
+	{
+		"name": "Beginning",
+		"steps": ["Untap", "Upkeep", "Draw"],
+	},
+	{
+		"name": "Main 1",
+		"steps": ["Main1"],
+	},
+	{
+		"name": "Combat",
+		"steps": ["BeginCombat", "DeclareAttackers", "DeclareBlockers", "CombatDamage", "EndCombat"],
+	},
+	{
+		"name": "Main 2",
+		"steps": ["Main2"],
+	},
+	{
+		"name": "Ending",
+		"steps": ["End", "Cleanup"],
+	},
+];
 
 const StyledSteps = styled.div`
 	display: flex;
@@ -32,6 +60,9 @@ const StyledSteps = styled.div`
 `;
 
 const StyledPhase = styled.div`
+	--accent-color: ${props => props.active ? "#fefefe" : "#aeaeae" };
+	color: var(--accent-color);
+
 	flex: 0 0 auto;
 	margin: 0 0.5rem;
 	text-align: center;
@@ -45,7 +76,7 @@ const PhaseUnderBox = styled.div`
 const PhaseUnderline = styled.div`
 	flex: 1 0 0.5rem;
 	min-width: 0.5rem; // why do I need this?
-	background-color: #fefefe;
+	background-color: var(--accent-color);
 	height: 1px;
 
 	position: relative;
@@ -55,7 +86,7 @@ const PhaseUnderline = styled.div`
 		bottom: 0;
 		width: 1px;
 		height: 8px;
-		background-color: #fefefe;
+		background-color: var(--accent-color);
 	}
 
 	&:first-child::before {
@@ -80,50 +111,39 @@ const PhaseSteps = styled.div`
 
 const Step = styled.div`
 	padding: 0.15rem 0.5rem;
+	color: ${props => props.active ? "#fefefe" : "#aeaeae"};
 `;
 
-const Phase = ({ name, children }) => (
-	<StyledPhase>
-		<PhaseSteps>
-			{children}
-		</PhaseSteps>
-		<PhaseUnderBox>
-			<PhaseUnderline />
-			<PhaseLabel>{ name }</PhaseLabel>
-			<PhaseUnderline />
-		</PhaseUnderBox>
-	</StyledPhase>
-);
+function Phase({ name, currentStep, steps }) {
+	const active = steps.includes(currentStep);
+	const children = steps.map(step => (
+		<Step key={step} active={currentStep === step}>
+			{stepLabelOverrides[step] || step}
+		</Step>
+	));
+
+	return (
+		<StyledPhase active={ active }>
+			<PhaseSteps>
+				{children}
+			</PhaseSteps>
+			<PhaseUnderBox>
+				<PhaseUnderline />
+				<PhaseLabel>{name}</PhaseLabel>
+				<PhaseUnderline />
+			</PhaseUnderBox>
+		</StyledPhase>
+	);
+}
 
 export default function Steps({ currentStep }) {
+	const children = phases.map(phase => (
+		<Phase key={phase.name} name={phase.name} currentStep={currentStep} steps={phase.steps} />
+	));
+
 	return (
 		<StyledSteps>
-			<Phase name="Beginning">
-				<Step>Untap</Step>
-				<Step>Upkeep</Step>
-				<Step>Draw</Step>
-			</Phase>
-
-			<Phase name="Main 1">
-				<Step>Main</Step>
-			</Phase>
-
-			<Phase name="Combat">
-				<Step>BeginCombat</Step>
-				<Step>DeclareAttackers</Step>
-				<Step>DeclareBlockers</Step>
-				<Step>CombatDamage</Step>
-				<Step>EndOfCombat</Step>
-			</Phase>
-
-			<Phase name="Main 2">
-				<Step>Main</Step>
-			</Phase>
-
-			<Phase name="Ending">
-				<Step>End</Step>
-				<Step>Cleanup</Step>
-			</Phase>
+			{children}
 		</StyledSteps>
 	);
 }

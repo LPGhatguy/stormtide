@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Debug};
 
 use hecs::{Entity, EntityBuilder, World};
+use serde::{Deserialize, Serialize};
 
 use crate::action::Action;
 use crate::components::{
@@ -59,7 +60,8 @@ pub struct Game {
     pending_triggers: (),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum GameState {
     /// The game is processing. No players can do anything right now.
     ///
@@ -70,7 +72,7 @@ pub enum GameState {
     /// A player has priority and can start to take an action. In some steps
     /// like the untap and cleanup steps, players do not normally receive
     /// priority.
-    Priority(Entity),
+    Priority { player: Entity },
 
     /// The game has concluded.
     Complete(GameOutcome),
@@ -83,18 +85,19 @@ pub enum GameState {
     NeedInput(GameInput),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum GameOutcome {
-    Win(Entity),
+    Win { winner: Entity },
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GameInput {
     player: Entity,
     input: GameInputKind,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum GameInputKind {
     ChooseAttackers,
     ChooseBlockers,
@@ -132,7 +135,7 @@ impl Game {
             players_that_have_passed: HashSet::new(),
             active_player: player1,
             step: Step::Upkeep,
-            state: GameState::Priority(player1),
+            state: GameState::Priority { player: player1 },
             zones,
             pending_triggers: (),
         }
@@ -282,8 +285,16 @@ impl Game {
         &self.turn_order
     }
 
+    pub fn step(&self) -> Step {
+        self.step
+    }
+
+    pub fn state(&self) -> &GameState {
+        &self.state
+    }
+
     pub fn priority_player(&self) -> Option<Entity> {
-        if let GameState::Priority(player) = &self.state {
+        if let GameState::Priority { player } = &self.state {
             Some(*player)
         } else {
             None
@@ -531,7 +542,9 @@ impl Game {
             }
         } else {
             self.apply_state_based_actions();
-            self.state = GameState::Priority(next_player);
+            self.state = GameState::Priority {
+                player: next_player,
+            };
         }
     }
 
@@ -607,7 +620,9 @@ impl Game {
                 // 503.1. The upkeep step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
 
                 // 503.1a Any abilities that triggered during the untap step and
                 //        any abilities that triggered at the beginning of the
@@ -628,7 +643,9 @@ impl Game {
 
                 // 504.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
             }
 
             // 505. Main Phase
@@ -643,7 +660,9 @@ impl Game {
 
                 // 505.5. Third, the active player gets priority. (See rule 117,
                 //        “Timing and Priority.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
             }
 
             // 507. Beginning of Combat Step
@@ -659,7 +678,9 @@ impl Game {
 
                 // 507.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
             }
 
             // 508. Declare Attackers Step
@@ -766,15 +787,19 @@ impl Game {
                 //        priority; the order in which they triggered doesn’t
                 //        matter. (See rule 603, “Handling Triggered
                 //        Abilities.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
             }
 
             // 511. End of Combat Step
-            Step::EndOfCombat => {
+            Step::EndCombat => {
                 // 511.1. The end of combat step has no turn-based actions. Once
                 //        it begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
 
                 // 511.2. Abilities that trigger “at end of combat” trigger as
                 //        the end of combat step begins. Effects that last
@@ -796,7 +821,9 @@ impl Game {
                 // 513.1. The end step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority(self.active_player);
+                self.state = GameState::Priority {
+                    player: self.active_player,
+                };
             }
 
             // 514. Cleanup Step
@@ -863,7 +890,9 @@ impl Game {
         // TODO: Support >2 players
         let other_player = self.turn_order.iter().find(|p| **p != player).unwrap();
 
-        self.state = GameState::Complete(GameOutcome::Win(*other_player));
+        self.state = GameState::Complete(GameOutcome::Win {
+            winner: *other_player,
+        });
     }
 
     /// Returns the next player, in turn order. This is used for priority
@@ -890,8 +919,8 @@ impl Game {
             Step::BeginCombat => Some(Step::DeclareAttackers),
             Step::DeclareAttackers => Some(Step::DeclareBlockers),
             Step::DeclareBlockers => Some(Step::CombatDamage),
-            Step::CombatDamage => Some(Step::EndOfCombat),
-            Step::EndOfCombat => Some(Step::Main2),
+            Step::CombatDamage => Some(Step::EndCombat),
+            Step::EndCombat => Some(Step::Main2),
             Step::Main2 => Some(Step::End),
             Step::End => Some(Step::Cleanup),
             Step::Cleanup => None,
@@ -1051,7 +1080,9 @@ impl Game {
 
         // 508.2. Second, the active player gets priority. (See rule 117,
         //        “Timing and Priority.”)
-        self.state = GameState::Priority(self.active_player);
+        self.state = GameState::Priority {
+            player: self.active_player,
+        };
     }
 
     fn choose_blockers(&mut self, _player: Entity, _blockers: &[Entity]) {
@@ -1075,7 +1106,7 @@ impl Debug for Game {
 ///        beginning, combat, and ending phases are further broken down into
 ///        steps, which proceed in order.
 #[allow(unused)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Step {
     // 501.1. The beginning phase consists of three steps, in this order: untap,
     //        upkeep, and draw.
@@ -1103,7 +1134,7 @@ pub enum Step {
     DeclareAttackers,
     DeclareBlockers,
     CombatDamage,
-    EndOfCombat,
+    EndCombat,
 
     // 512.1. The ending phase consists of two steps: end and cleanup.
     End,
