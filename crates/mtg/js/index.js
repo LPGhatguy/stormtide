@@ -5,6 +5,7 @@ import styled from "styled-components";
 
 import card_back from "../assets/card-back.png";
 import player1 from "../assets/player1.png";
+import player2 from "../assets/player2.png";
 
 const SidePanel = styled.div`
 	display: flex;
@@ -60,17 +61,17 @@ const Library = styled.div`
 	font-size: 2rem;
 `;
 
-function PlayerPanel() {
+function PlayerPanel({ name, lifeTotal, libraryCount, profilePicture }) {
 	return (
 		<SidePanel>
 			<Identity>
 				<Portrait>
-					<img src={ player1 } />
+					<img src={ profilePicture } />
 				</Portrait>
-				<Name>Player 1</Name>
+				<Name>{ name }</Name>
 			</Identity>
-			<LifeTotal>20</LifeTotal>
-			<Library>60</Library>
+			<LifeTotal>{ lifeTotal }</LifeTotal>
+			<Library>{ libraryCount }</Library>
 		</SidePanel>
 	);
 }
@@ -96,17 +97,27 @@ const MainPlayfield = styled.div`
 	background-color: #242526;
 `;
 
-function App() {
+const profilePictures = [player1, player2];
+
+function App({ game }) {
+	const players = game.players().map((player, index) => {
+		const library = game.objectsInZone({ "Library": player.entity });
+
+		return (
+			<Player>
+				<PlayerPanel
+					name={player.name}
+					lifeTotal={player.lifeTotal}
+					libraryCount={library.length}
+					profilePicture={profilePictures[index]} />
+				<MainPlayfield />
+			</Player>
+		);
+	});
+
 	return (
 		<GameContainer>
-			<Player>
-				<PlayerPanel />
-				<MainPlayfield />
-			</Player>
-			<Player>
-				<PlayerPanel />
-				<MainPlayfield />
-			</Player>
+			{players}
 		</GameContainer>
 	);
 }
@@ -120,7 +131,7 @@ async function main() {
 	console.log(game.players());
 
 	const root = document.getElementById("app");
-	render(<App />, root);
+	render(<App game={game} />, root);
 }
 
 main();

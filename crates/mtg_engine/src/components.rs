@@ -3,6 +3,7 @@
 use std::collections::BTreeSet;
 
 use hecs::Entity;
+use serde::{Deserialize, Serialize};
 
 use crate::counters::Counter;
 use crate::ident::Ident;
@@ -10,7 +11,7 @@ use crate::pt::PtCharacteristic;
 use crate::zone::ZoneId;
 
 /// A component that indicates that this entity is a player.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Player {
     pub name: String,
     pub has_lost: bool,
@@ -49,7 +50,7 @@ pub struct AttachedToEntity {
 ///        about an object isn’t a characteristic. For example, characteristics
 ///        don’t include whether a permanent is tapped, a spell’s target, an
 ///        object’s owner or controller, what an Aura enchants, and so on.
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Object {
     pub name: Ident,
 

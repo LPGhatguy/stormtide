@@ -1,4 +1,10 @@
-use mtg_engine::{components::Player, game::Game, zone::ZoneId};
+use mtg_engine::{
+    components::{Object, Player},
+    game::Game,
+    hecs::Entity,
+    ident::Ident,
+    zone::ZoneId,
+};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
@@ -27,6 +33,7 @@ impl JsGame {
                 let player = self.inner.world().get::<Player>(entity).ok()?;
 
                 Some(JsPlayer {
+                    entity,
                     name: player.name.to_owned(),
                     life: player.life as i32,
                 })
@@ -35,12 +42,46 @@ impl JsGame {
 
         JsValue::from_serde(&players).unwrap()
     }
+
+    #[wasm_bindgen(js_name = "objectsInZone")]
+    pub fn objects_in_zone(&self, zone: &JsValue) -> JsValue {
+        let zone_id: ZoneId = zone.into_serde().unwrap();
+
+        let entities = self.inner.zone(zone_id).unwrap().members();
+        let output = entities
+            .into_iter()
+            .filter_map(|&entity| {
+                let entity = self.inner.world().entity(entity).ok()?;
+                let object = entity.get::<Object>()?;
+
+                let js_object = JsObject {
+                    name: object.name.clone(),
+                    zone: object.zone,
+                    owner: object.owner,
+                    controller: object.controller,
+                };
+
+                Some(js_object)
+            })
+            .collect::<Vec<_>>();
+
+        JsValue::from_serde(&output).unwrap()
+    }
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct JsPlayer {
+    pub entity: Entity,
     pub name: String,
     pub life: i32,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct JsObject {
+    pub name: Ident,
+    pub zone: ZoneId,
+    pub owner: Entity,
+    pub controller: Option<Entity>,
 }
 
 pub fn sample_game() -> Game {

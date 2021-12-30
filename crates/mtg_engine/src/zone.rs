@@ -1,12 +1,13 @@
 use hecs::Entity;
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 
 /// 400.1. A zone is a place where objects can be during a game. There are
 ///        normally seven zones: library, hand, battlefield, graveyard, stack,
 ///        exile, and command. Some older cards also use the ante zone. Each
 ///        player has their own library, hand, and graveyard. The other zones
 ///        are shared by all players.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ZoneId {
     Library(Entity),
     Hand(Entity),
