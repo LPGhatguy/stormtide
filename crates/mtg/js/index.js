@@ -51,7 +51,7 @@ const LifeTotal = styled.div`
 `;
 
 const Library = styled.div`
-	margin: 1rem;
+	margin: 1rem 3rem;
 	aspect-ratio: 5 / 7;
 	background-image: url(${ card_back });
 	background-size: contain;

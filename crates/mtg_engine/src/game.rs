@@ -913,7 +913,13 @@ impl Game {
     fn next_step(&self) -> Option<Step> {
         match self.step {
             Step::Untap => Some(Step::Upkeep),
-            Step::Upkeep => Some(Step::Draw),
+            Step::Upkeep => {
+                if self.turn_number == 1 && self.active_player == self.players()[0] {
+                    return Some(Step::Main1);
+                }
+
+                Some(Step::Draw)
+            }
             Step::Draw => Some(Step::Main1),
             Step::Main1 => Some(Step::BeginCombat),
             Step::BeginCombat => Some(Step::DeclareAttackers),
@@ -1085,8 +1091,31 @@ impl Game {
         };
     }
 
-    fn choose_blockers(&mut self, _player: Entity, _blockers: &[Entity]) {
+    fn blockers_valid(&self, _player: Entity, _blockers: &[Entity]) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn choose_blockers(&mut self, player: Entity, blockers: &[Entity]) {
+        let required_state = GameState::NeedInput(GameInput {
+            player,
+            input: GameInputKind::ChooseBlockers,
+        });
+
+        if self.state != required_state {
+            log::warn!("Player {:?} cannot choose blockers right now.", player);
+            return;
+        }
+
+        if let Err(reason) = self.blockers_valid(player, blockers) {
+            log::warn!("Blockers were not valid: {}", reason);
+            return;
+        }
+
         // TODO
+
+        self.state = GameState::Priority {
+            player: self.active_player,
+        };
     }
 }
 

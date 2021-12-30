@@ -4,6 +4,7 @@ use mtg_engine::{
     game::Game,
     hecs::Entity,
     ident::Ident,
+    object_db::{CardId, ObjectDb},
     zone::ZoneId,
 };
 use serde::{Deserialize, Serialize};
@@ -28,16 +29,21 @@ impl JsGame {
         }
     }
 
+    #[wasm_bindgen(js_class = "objectDb")]
+    pub fn object_db(&self) -> JsObjectDb {
+        JsObjectDb {
+            inner: self.inner.object_db().clone(),
+        }
+    }
+
     #[wasm_bindgen(js_name = "doAction")]
     pub fn do_action(&mut self, player: JsValue, action: JsValue) {
-        log::info!("do_action {:?} {:?}", player, action);
         let player: Entity = player.into_serde().unwrap();
         let action: Action = action.into_serde().unwrap();
 
         self.inner.do_action(player, action);
     }
 
-    #[wasm_bindgen]
     pub fn players(&self) -> JsValue {
         let players = self
             .inner
@@ -89,6 +95,30 @@ impl JsGame {
 
     pub fn state(&self) -> JsValue {
         JsValue::from_serde(self.inner.state()).unwrap()
+    }
+}
+
+#[wasm_bindgen(js_name = "ObjectDb")]
+pub struct JsObjectDb {
+    inner: ObjectDb,
+}
+
+#[wasm_bindgen(js_class = "ObjectDb")]
+impl JsObjectDb {
+    #[wasm_bindgen(js_name = "cardId")]
+    pub fn card_id(&self, name: &str) -> Option<u32> {
+        self.inner.card_id(name).map(|id| id.0 as u32)
+    }
+
+    pub fn card(&self, id: u32) -> JsValue {
+        let card = self.inner.card(CardId(id as usize));
+        JsValue::from_serde(&card).unwrap()
+    }
+
+    #[wasm_bindgen(js_name = "cardByName")]
+    pub fn card_by_name(&self, name: &str) -> JsValue {
+        let card = self.inner.card_by_name(name);
+        JsValue::from_serde(&card).unwrap()
     }
 }
 

@@ -7,7 +7,7 @@ use crate::ident::Ident;
 use crate::pt::PtCharacteristic;
 use crate::types::{CardSubtype, CardSupertype, CardType};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CardDescriptor {
     pub name: Ident,
     pub types: Vec<CardType>,

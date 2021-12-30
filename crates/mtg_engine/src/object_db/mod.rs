@@ -6,8 +6,9 @@ use crate::ident::Ident;
 static CARDS_JSON: &str = include_str!("./cards.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CardId(usize);
+pub struct CardId(pub usize);
 
+#[derive(Clone)]
 pub struct ObjectDb {
     cards: Vec<CardDescriptor>,
     card_name_to_index: HashMap<Ident, usize>,
