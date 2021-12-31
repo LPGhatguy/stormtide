@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct Player {
     pub name: String,
     pub has_lost: bool,
+    pub lands_played_this_turn: u32,
     pub life: i64,
 }
 
@@ -13,6 +14,7 @@ impl Player {
         Self {
             name,
             has_lost: false,
+            lands_played_this_turn: 0,
             life: 20,
         }
     }

@@ -587,6 +587,12 @@ impl Game {
         let next_player = self.player_after(self.active_player);
         let is_new_turn_cycle = next_player == self.turn_order[0];
 
+        {
+            for (_, player) in self.world.query_mut::<(&mut Player)>() {
+                player.lands_played_this_turn = 0;
+            }
+        }
+
         self.active_player = next_player;
         self.enter_step(Step::Untap);
 
@@ -1134,7 +1140,53 @@ impl Game {
     }
 
     fn play_land(&mut self, player: Entity, land: Entity) {
-        self.move_object_to_zone(land, ZoneId::Battlefield);
+        // 116.2a Playing a land is a special action. To play a land, a player
+        //        puts that land onto the battlefield from the zone it was in
+        //        (usually that player’s hand). By default, a player can take
+        //        this action only once during each of their turns. A player can
+        //        take this action any time they have priority and the stack is
+        //        empty during a main phase of their turn. See rule 305,
+        //        “Lands.”
+
+        fn inner(game: &mut Game, player: Entity, land: Entity) -> Result<(), String> {
+            if game.active_player != player {
+                return Err("it is not their turn".to_owned());
+            }
+
+            if game.step != Step::Main1 && game.step != Step::Main2 {
+                return Err("it is not the main phase".to_owned());
+            }
+
+            let expected_state = GameState::Priority { player };
+            if game.state != expected_state {
+                return Err("they do not have priority".to_owned());
+            }
+
+            let stack = game.zone(ZoneId::Stack).unwrap();
+            if !stack.is_empty() {
+                return Err("the stack is not empty".to_owned());
+            }
+
+            {
+                let mut player_object = game
+                    .world
+                    .get_mut::<Player>(player)
+                    .map_err(|_| format!("{:?} is not a player", player))?;
+
+                if player_object.lands_played_this_turn > 0 {
+                    return Err("they have already played a land this turn".to_owned());
+                }
+                player_object.lands_played_this_turn += 1;
+            }
+
+            game.move_object_to_zone(land, ZoneId::Battlefield);
+
+            Ok(())
+        }
+
+        if let Err(err) = inner(self, player, land) {
+            log::warn!("Player {:?} cannot play land {:?}: {}", player, land, err);
+        }
     }
 }
 
@@ -1154,7 +1206,7 @@ impl Debug for Game {
 ///        beginning, combat, and ending phases are further broken down into
 ///        steps, which proceed in order.
 #[allow(unused)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Step {
     // 501.1. The beginning phase consists of three steps, in this order: untap,
     //        upkeep, and draw.
