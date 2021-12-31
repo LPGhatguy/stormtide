@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+
 use crate::card::CardDescriptor;
 use crate::ident::Ident;
 
 static CARDS_JSON: &str = include_str!("./cards.json");
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CardId(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct CardId(pub u32);
 
 #[derive(Clone)]
 pub struct ObjectDb {
@@ -30,11 +32,13 @@ impl ObjectDb {
     }
 
     pub fn card_id(&self, name: &str) -> Option<CardId> {
-        self.card_name_to_index.get(name).copied().map(CardId)
+        self.card_name_to_index
+            .get(name)
+            .map(|&index| CardId(index as u32))
     }
 
     pub fn card(&self, id: CardId) -> Option<&CardDescriptor> {
-        self.cards.get(id.0)
+        self.cards.get(id.0 as usize)
     }
 
     pub fn card_by_name(&self, name: &str) -> Option<&CardDescriptor> {

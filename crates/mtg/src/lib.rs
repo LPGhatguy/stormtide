@@ -1,17 +1,20 @@
 use mtg_engine::{
     action::Action,
-    components::{Object, Player},
+    components::{Card, Object, Permanent, Player},
     game::Game,
     hecs::Entity,
     ident::Ident,
     object_db::{CardId, ObjectDb},
+    pt::PtCharacteristic,
+    types::{CardSubtype, CardSupertype, CardType},
     zone::ZoneId,
 };
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen(js_name = "startLogging")]
-pub fn start_logging() {
+#[wasm_bindgen(js_name = "engineInit")]
+pub fn engine_init() {
+    console_error_panic_hook::set_once();
     wasm_logger::init(wasm_logger::Config::default());
 }
 
@@ -72,14 +75,22 @@ impl JsGame {
         let output = entities
             .into_iter()
             .filter_map(|&entity| {
-                let entity = self.inner.world().entity(entity).ok()?;
-                let object = entity.get::<Object>()?;
+                let entity_ref = self.inner.world().entity(entity).ok()?;
+                let object = entity_ref.get::<Object>()?;
 
                 let js_object = JsObject {
+                    entity,
                     name: object.name.clone(),
+                    types: object.types.clone(),
+                    supertypes: object.supertypes.clone(),
+                    subtypes: object.subtypes.clone(),
+                    pt: object.pt,
                     zone: object.zone,
                     owner: object.owner,
                     controller: object.controller,
+
+                    card: entity_ref.get::<Card>().as_deref().cloned(),
+                    permanent: entity_ref.get::<Permanent>().as_deref().cloned(),
                 };
 
                 Some(js_object)
@@ -107,11 +118,11 @@ pub struct JsObjectDb {
 impl JsObjectDb {
     #[wasm_bindgen(js_name = "cardId")]
     pub fn card_id(&self, name: &str) -> Option<u32> {
-        self.inner.card_id(name).map(|id| id.0 as u32)
+        self.inner.card_id(name).map(|id| id.0)
     }
 
     pub fn card(&self, id: u32) -> JsValue {
-        let card = self.inner.card(CardId(id as usize));
+        let card = self.inner.card(CardId(id));
         JsValue::from_serde(&card).unwrap()
     }
 
@@ -131,10 +142,19 @@ pub struct JsPlayer {
 
 #[derive(Serialize, Deserialize)]
 pub struct JsObject {
+    pub entity: Entity,
+
     pub name: Ident,
+    pub types: Vec<CardType>,
+    pub supertypes: Vec<CardSupertype>,
+    pub subtypes: Vec<CardSubtype>,
+    pub pt: Option<PtCharacteristic>,
     pub zone: ZoneId,
     pub owner: Entity,
     pub controller: Option<Entity>,
+
+    pub card: Option<Card>,
+    pub permanent: Option<Permanent>,
 }
 
 pub fn sample_game() -> Game {
@@ -158,6 +178,15 @@ pub fn sample_game() -> Game {
         }
 
         game.zone_mut(ZoneId::Library(player)).unwrap().shuffle();
+
+        for _ in 0..7 {
+            let card = {
+                let members = game.zone(ZoneId::Library(player)).unwrap().members();
+
+                members[members.len() - 1]
+            };
+            game.move_object_to_zone(card, ZoneId::Hand(player));
+        }
     }
 
     game

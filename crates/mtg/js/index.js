@@ -1,4 +1,4 @@
-import init, { startLogging, Game } from "mtg";
+import init, { engineInit, Game } from "mtg";
 import React, { useContext } from "react";
 import { render } from "react-dom";
 import styled from "styled-components";
@@ -31,18 +31,19 @@ const MainPlayfield = styled.div`
 	display: flex;
 	gap: 0.5rem;
 	flex-direction: ${props => props.top ? "column-reverse" : "column"};
+	${props => props.top ? "padding-bottom" : "padding-top"}: 0.5rem;
 `;
 
 const BattlefieldRow = styled.div`
-	flex: 1 1 auto;
+	flex: 1 1 2rem;
 
 	display: flex;
 	justify-content: center;
-	gap: 0.5rem;
 `;
 
 const Hand = styled.div`
-	flex: 0 1 auto;
+	flex: 1 1 1rem;
+
 	display: flex;
 	background-color: rgba(0, 0, 0, 0.5);
 `;
@@ -59,12 +60,73 @@ const getPriority = game => {
 };
 
 function Main() {
-	const { game } = useContext(GameContext);
+	const { game, doAction } = useContext(GameContext);
 
 	const priority = getPriority(game);
+	const battlefield = game.objectsInZone("Battlefield");
+	const stack = game.objectsInZone("Stack");
 	const players = game.players().map((player, index) => {
+		const hand = game.objectsInZone({ "Hand": player.entity });
 		const library = game.objectsInZone({ "Library": player.entity });
 		const top = index === 0;
+
+		const playCard = object => {
+			if (object.types.includes("Land")) {
+				doAction(player.entity, {
+					type: "PlayLand",
+					card: object.entity,
+				});
+			} else {
+				console.warn("Can't play this object yet:", object);
+			}
+		};
+
+		const handCards = hand.map(object => {
+			const id = object.card ? object.card.id : null;
+
+			return (
+				<Card key={object.entity} id={id} onClick={() => playCard(object)} />
+			);
+		});
+
+		const creatureCards = battlefield
+			.filter(object => object.controller === player.entity && !object.types.includes("Land"))
+			.map(object => {
+				let tapped = false;
+				if (object.permanent != null && object.permanent.tapped) {
+					tapped = true;
+				}
+
+				const id = object.card ? object.card.id : null;
+
+				return (
+					<Card key={object.entity} id={id} />
+				);
+			});
+
+		const manaCards = battlefield
+			.filter(object => object.controller === player.entity && object.types.includes("Land"))
+			.map(object => {
+				let tapped = false;
+				if (object.permanent != null && object.permanent.tapped) {
+					tapped = true;
+				}
+
+				const id = object.card ? object.card.id : null;
+
+				return (
+					<Card key={object.entity} id={id} />
+				);
+			});
+
+		const stackCards = stack
+			.map(object => {
+				const id = object.card ? object.card.id : null;
+
+				return (
+					<Card key={object.entity} id={id} />
+				);
+			});
 
 		return (
 			<Player>
@@ -77,20 +139,9 @@ function Main() {
 					profilePicture={profilePictures[index]} />
 
 				<MainPlayfield top={top}>
-					<BattlefieldRow>
-						<Card id={1} /> 
-						<Card id={1} /> 
-					</BattlefieldRow>
-					<BattlefieldRow>
-						<Card id={0} />
-						<Card id={0} />
-					</BattlefieldRow>
-					<Hand>
-						<Card id={0} /> 
-						<Card id={2} /> 
-						<Card id={0} /> 
-						<Card id={3} /> 
-					</Hand>
+					<BattlefieldRow>{creatureCards}</BattlefieldRow>
+					<BattlefieldRow>{manaCards}</BattlefieldRow>
+					<Hand>{handCards}</Hand>
 				</MainPlayfield>
 			</Player>
 		);
@@ -118,7 +169,7 @@ async function main() {
 	await init();
 	console.log("WebAssembly loaded!");
 
-	startLogging();
+	engineInit();
 
 	let game = new Game();
 	console.log("Players:", game.players());

@@ -171,11 +171,15 @@ impl Game {
         let mut builder = EntityBuilder::new();
         builder.add(Object {
             name: descriptor.name.clone(),
+            types: descriptor.types.clone(),
+            supertypes: descriptor.supertypes.clone(),
+            subtypes: descriptor.subtypes.clone(),
+            pt: descriptor.pt,
             zone: zone_id,
             owner,
             controller,
         });
-        builder.add(Card {});
+        builder.add(Card { id });
 
         if descriptor.types.contains(&CardType::Creature) {
             let pt = descriptor.pt?;
@@ -199,12 +203,22 @@ impl Game {
 
     pub fn move_object_to_zone(&mut self, object_id: Entity, zone_id: ZoneId) -> Option<()> {
         if !self.zones.contains_key(&zone_id) {
+            log::warn!(
+                "Cannot move object {:?} to zone {:?}: the zone does not exist",
+                object_id,
+                zone_id,
+            );
             return None;
         }
 
         let mut object = self.world.get_mut::<Object>(object_id).ok()?;
         let old_zone_id = object.zone;
         if zone_id == old_zone_id {
+            log::warn!(
+                "Cannot move object {:?} to zone {:?}: it is already in that zone",
+                object_id,
+                zone_id,
+            );
             return Some(());
         }
 
@@ -316,6 +330,10 @@ impl Game {
                 self.choose_blockers(player, &blockers);
             }
 
+            Action::PlayLand { card } => {
+                self.play_land(player, card);
+            }
+
             Action::CastSpell { spell } => {
                 unimplemented!("player {:?} casting spell {:?}", player, spell)
             }
@@ -325,9 +343,6 @@ impl Game {
                 ability,
                 object
             ),
-            Action::PlayLand { card } => {
-                unimplemented!("player {:?} playing land {:?}", player, card)
-            }
         }
     }
 
@@ -1116,6 +1131,10 @@ impl Game {
         self.state = GameState::Priority {
             player: self.active_player,
         };
+    }
+
+    fn play_land(&mut self, player: Entity, land: Entity) {
+        self.move_object_to_zone(land, ZoneId::Battlefield);
     }
 }
 
