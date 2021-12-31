@@ -55,7 +55,7 @@ const StyledSteps = styled.div`
 	gap: 0.5rem;
 
 	background-color: rgba(0, 0, 0, 0.2);
-	padding: 0.5rem;
+	padding: 0.2rem;
 	text-align: center;
 `;
 
@@ -75,16 +75,18 @@ const PhaseUnderBox = styled.div`
 
 const PhaseUnderline = styled.div`
 	flex: 1 0 0.5rem;
-	min-width: 0.5rem; // why do I need this?
+	min-width: 0.5rem; // needed due to mysterious flexbox behavior
 	background-color: var(--accent-color);
-	height: 1px;
+	height: 0.5px;
 
 	position: relative;
 	&::before {
 		content: "";
 		position: absolute;
 		bottom: 0;
-		width: 1px;
+		// using width over 1px causes borders to be sometimes >1px thick when
+		// DPI scaling gets involved.
+		width: 0.5px;
 		height: 8px;
 		background-color: var(--accent-color);
 	}

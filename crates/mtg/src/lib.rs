@@ -29,7 +29,7 @@ impl JsGame {
         }
     }
 
-    #[wasm_bindgen(js_class = "objectDb")]
+    #[wasm_bindgen(js_name = "objectDb")]
     pub fn object_db(&self) -> JsObjectDb {
         JsObjectDb {
             inner: self.inner.object_db().clone(),

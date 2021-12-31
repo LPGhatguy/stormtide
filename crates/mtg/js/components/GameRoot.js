@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import { createContext, useState } from "react";
 
-export const GameContext = React.createContext(null);
+export const GameContext = createContext(null);
 
 export default function GameRoot({ game, children }) {
 	const [num, rerender] = useState(0);
+	const [objectDb, _updateObjectDb] = useState(game.objectDb());
 
 	const doAction = (player, action) => {
 		game.doAction(player, action);
@@ -12,6 +13,7 @@ export default function GameRoot({ game, children }) {
 
 	const gameWrapper = {
 		game,
+		objectDb,
 		doAction,
 	};
 
