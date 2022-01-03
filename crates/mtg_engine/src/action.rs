@@ -1,12 +1,10 @@
-//! Describes an action that a player can (potentially) take in the game.
-
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
-#[allow(unused)]
+/// Describes an action that a player can take in the game.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
-pub enum Action {
+pub enum PlayerAction {
     /// 104.3a A player can concede the game at any time. A player who concedes
     ///        leaves the game immediately. That player loses the game.
     Concede,
@@ -49,4 +47,14 @@ pub enum Action {
         // TODO: Costs
     },
     // TODO: Rules 116.2b—116.2i
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum PlayerActionCategory {
+    /// A player has priority and can start to take an action. In some steps
+    /// like the untap and cleanup steps, players do not normally receive
+    /// priority.
+    Priority,
+    ChooseAttackers,
+    ChooseBlockers,
 }

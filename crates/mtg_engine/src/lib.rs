@@ -16,7 +16,7 @@ pub use hecs;
 
 #[cfg(test)]
 mod test {
-    use crate::action::Action;
+    use crate::action::PlayerAction;
     use crate::components::UntilEotEffect;
     use crate::game::Game;
     use crate::pt::{AdjustPtEffect, PtValue};
@@ -48,7 +48,7 @@ mod test {
         assert_eq!(bear_pt, PtValue::new(5, 5));
 
         while game.turn_number() < 2 {
-            game.do_action(game.priority_player().unwrap(), Action::PassPriority);
+            game.do_action(game.priority_player().unwrap(), PlayerAction::PassPriority);
         }
 
         assert!(
@@ -64,7 +64,7 @@ mod test {
         let mut game = Game::new();
 
         while game.turn_number() < 3 {
-            game.do_action(game.priority_player().unwrap(), Action::PassPriority);
+            game.do_action(game.priority_player().unwrap(), PlayerAction::PassPriority);
         }
     }
 }

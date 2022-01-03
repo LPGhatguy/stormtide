@@ -6,14 +6,16 @@ use std::fmt::{self, Debug};
 use hecs::{Entity, EntityBuilder, World};
 use serde::{Deserialize, Serialize};
 
-use crate::action::Action;
-use crate::components::{
-    AttachedToEntity, Card, Creature, Damage, Object, Permanent, Player, UntilEotEffect,
+use crate::{
+    action::{PlayerAction, PlayerActionCategory},
+    components::{
+        AttachedToEntity, Card, Creature, Damage, Object, Permanent, Player, UntilEotEffect,
+    },
+    object_db::{CardId, ObjectDb},
+    queries::Query,
+    types::CardType,
+    zone::{Zone, ZoneId},
 };
-use crate::object_db::{CardId, ObjectDb};
-use crate::queries::Query;
-use crate::types::CardType;
-use crate::zone::{Zone, ZoneId};
 
 pub struct Game {
     /// A database containing objects that can be instantiated into the game.
@@ -69,38 +71,31 @@ pub enum GameState {
     /// state.
     Processing,
 
-    /// A player has priority and can start to take an action. In some steps
-    /// like the untap and cleanup steps, players do not normally receive
-    /// priority.
-    Priority { player: Entity },
+    /// The game is waiting on a player to do something. This can vary from a
+    /// player having priority, to choosing a spell's target or how to pay a
+    /// cost.
+    Player {
+        player: Entity,
+        action: PlayerActionCategory,
+    },
 
     /// The game has concluded.
     Complete(GameOutcome),
+}
 
-    /// The game needs a specific kind of input to continue, like choosing a
-    /// spell's target, choosing how to pay a cost, etc.
-    ///
-    /// This can also be used to pause the rules engine while a request is being
-    /// made to a hyptothetical authoritative server for more information.
-    NeedInput(GameInput),
+impl GameState {
+    pub fn priority(player: Entity) -> Self {
+        Self::Player {
+            player,
+            action: PlayerActionCategory::Priority,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum GameOutcome {
     Win { winner: Entity },
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct GameInput {
-    player: Entity,
-    input: GameInputKind,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum GameInputKind {
-    ChooseAttackers,
-    ChooseBlockers,
 }
 
 impl Game {
@@ -135,7 +130,7 @@ impl Game {
             players_that_have_passed: HashSet::new(),
             active_player: player1,
             step: Step::Upkeep,
-            state: GameState::Priority { player: player1 },
+            state: GameState::priority(player1),
             zones,
             pending_triggers: (),
         }
@@ -308,36 +303,37 @@ impl Game {
     }
 
     pub fn priority_player(&self) -> Option<Entity> {
-        if let GameState::Priority { player } = &self.state {
-            Some(*player)
-        } else {
-            None
+        match &self.state {
+            GameState::Player { player, action } if action == &PlayerActionCategory::Priority => {
+                Some(*player)
+            }
+            _ => None,
         }
     }
 
-    pub fn do_action(&mut self, player: Entity, action: Action) {
+    pub fn do_action(&mut self, player: Entity, action: PlayerAction) {
         log::debug!("Player {:?} attempting action {:?}", player, action);
 
         match action {
-            Action::Concede => self.player_loses(player),
-            Action::PassPriority => self.pass_priority(player),
+            PlayerAction::Concede => self.player_loses(player),
+            PlayerAction::PassPriority => self.pass_priority(player),
 
-            Action::ChooseAttackers { attackers } => {
+            PlayerAction::ChooseAttackers { attackers } => {
                 self.choose_attackers(player, &attackers);
             }
 
-            Action::ChooseBlockers { blockers } => {
+            PlayerAction::ChooseBlockers { blockers } => {
                 self.choose_blockers(player, &blockers);
             }
 
-            Action::PlayLand { card } => {
+            PlayerAction::PlayLand { card } => {
                 self.play_land(player, card);
             }
 
-            Action::CastSpell { spell } => {
+            PlayerAction::CastSpell { spell } => {
                 unimplemented!("player {:?} casting spell {:?}", player, spell)
             }
-            Action::ActivateAbility { object, ability } => unimplemented!(
+            PlayerAction::ActivateAbility { object, ability } => unimplemented!(
                 "player {:?} activating ability #{} on object {:?}",
                 player,
                 ability,
@@ -557,9 +553,7 @@ impl Game {
             }
         } else {
             self.apply_state_based_actions();
-            self.state = GameState::Priority {
-                player: next_player,
-            };
+            self.state = GameState::priority(next_player);
         }
     }
 
@@ -588,7 +582,7 @@ impl Game {
         let is_new_turn_cycle = next_player == self.turn_order[0];
 
         {
-            for (_, player) in self.world.query_mut::<(&mut Player)>() {
+            for (_, player) in self.world.query_mut::<&mut Player>() {
                 player.lands_played_this_turn = 0;
             }
         }
@@ -641,9 +635,7 @@ impl Game {
                 // 503.1. The upkeep step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
 
                 // 503.1a Any abilities that triggered during the untap step and
                 //        any abilities that triggered at the beginning of the
@@ -664,9 +656,7 @@ impl Game {
 
                 // 504.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
             }
 
             // 505. Main Phase
@@ -681,9 +671,7 @@ impl Game {
 
                 // 505.5. Third, the active player gets priority. (See rule 117,
                 //        “Timing and Priority.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
             }
 
             // 507. Beginning of Combat Step
@@ -699,9 +687,7 @@ impl Game {
 
                 // 507.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
             }
 
             // 508. Declare Attackers Step
@@ -715,10 +701,10 @@ impl Game {
                 //        illegal; the game returns to the moment before the
                 //        declaration (see rule 726, “Handling Illegal
                 //        Actions”).
-                self.state = GameState::NeedInput(GameInput {
+                self.state = GameState::Player {
                     player: self.active_player,
-                    input: GameInputKind::ChooseAttackers,
-                });
+                    action: PlayerActionCategory::ChooseAttackers,
+                };
             }
 
             // 509. Declare Blockers Step
@@ -740,10 +726,10 @@ impl Game {
                 //        the declaration is illegal; the game returns to the
                 //        moment before the declaration (see rule 726, “Handling
                 //        Illegal Actions”).
-                self.state = GameState::NeedInput(GameInput {
+                self.state = GameState::Player {
                     player: nap,
-                    input: GameInputKind::ChooseBlockers,
-                });
+                    action: PlayerActionCategory::ChooseBlockers,
+                };
 
                 // 509.2. Second, for each attacking creature that’s become
                 //        blocked, the active player announces that creature’s
@@ -808,9 +794,7 @@ impl Game {
                 //        priority; the order in which they triggered doesn’t
                 //        matter. (See rule 603, “Handling Triggered
                 //        Abilities.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
             }
 
             // 511. End of Combat Step
@@ -818,9 +802,7 @@ impl Game {
                 // 511.1. The end of combat step has no turn-based actions. Once
                 //        it begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
 
                 // 511.2. Abilities that trigger “at end of combat” trigger as
                 //        the end of combat step begins. Effects that last
@@ -842,9 +824,7 @@ impl Game {
                 // 513.1. The end step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::Priority {
-                    player: self.active_player,
-                };
+                self.state = GameState::priority(self.active_player);
             }
 
             // 514. Cleanup Step
@@ -1037,10 +1017,10 @@ impl Game {
     }
 
     fn choose_attackers(&mut self, player: Entity, attackers: &[Entity]) {
-        let required_state = GameState::NeedInput(GameInput {
+        let required_state = GameState::Player {
             player,
-            input: GameInputKind::ChooseAttackers,
-        });
+            action: PlayerActionCategory::ChooseAttackers,
+        };
 
         if self.state != required_state {
             log::warn!("Player {:?} cannot choose attackers right now.", player);
@@ -1107,9 +1087,7 @@ impl Game {
 
         // 508.2. Second, the active player gets priority. (See rule 117,
         //        “Timing and Priority.”)
-        self.state = GameState::Priority {
-            player: self.active_player,
-        };
+        self.state = GameState::priority(self.active_player);
     }
 
     fn blockers_valid(&self, _player: Entity, _blockers: &[Entity]) -> Result<(), String> {
@@ -1117,10 +1095,10 @@ impl Game {
     }
 
     fn choose_blockers(&mut self, player: Entity, blockers: &[Entity]) {
-        let required_state = GameState::NeedInput(GameInput {
+        let required_state = GameState::Player {
             player,
-            input: GameInputKind::ChooseBlockers,
-        });
+            action: PlayerActionCategory::ChooseBlockers,
+        };
 
         if self.state != required_state {
             log::warn!("Player {:?} cannot choose blockers right now.", player);
@@ -1134,9 +1112,7 @@ impl Game {
 
         // TODO
 
-        self.state = GameState::Priority {
-            player: self.active_player,
-        };
+        self.state = GameState::priority(self.active_player);
     }
 
     fn play_land(&mut self, player: Entity, land: Entity) {
@@ -1157,8 +1133,7 @@ impl Game {
                 return Err("it is not the main phase".to_owned());
             }
 
-            let expected_state = GameState::Priority { player };
-            if game.state != expected_state {
+            if game.priority_player() != Some(player) {
                 return Err("they do not have priority".to_owned());
             }
 

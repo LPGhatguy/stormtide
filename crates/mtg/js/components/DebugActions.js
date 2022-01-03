@@ -19,15 +19,27 @@ export default function DebugActions({ player }) {
 
 	const state = game.state();
 
-	if (state.type === "Priority" && state.player === player) {
-		const passPriority = () => doAction(player, { type: "PassPriority" });
-		actions.push(<DebugButton key="pass" onClick={passPriority}>Pass Priority</DebugButton>);
-	} else if (state.type === "NeedInput" && state.input === "ChooseAttackers" && state.player === player) {
-		const noAttackers = () => doAction(player, { type: "ChooseAttackers", attackers: [] });
-		actions.push(<DebugButton key="no-attackers" onClick={noAttackers}>No Attackers</DebugButton>);
-	} else if (state.type === "NeedInput" && state.input === "ChooseBlockers" && state.player === player) {
-		const noBlockers = () => doAction(player, { type: "ChooseBlockers", blockers: [] });
-		actions.push(<DebugButton key="no-blockers" onClick={noBlockers}>No Blockers</DebugButton>);
+	if (state.type !== "Player") {
+		return <div></div>;
+	}
+
+	if (state.player === player) {
+		switch (state.action) {
+			case "Priority":
+				const passPriority = () => doAction(player, { type: "PassPriority" });
+				actions.push(<DebugButton key="pass" onClick={passPriority}>Pass Priority</DebugButton>);
+				break;
+
+			case "ChooseAttackers":
+				const noAttackers = () => doAction(player, { type: "ChooseAttackers", attackers: [] });
+				actions.push(<DebugButton key="no-attackers" onClick={noAttackers}>No Attackers</DebugButton>);
+				break;
+
+			case "ChooseBlockers":
+				const noBlockers = () => doAction(player, { type: "ChooseBlockers", blockers: [] });
+				actions.push(<DebugButton key="no-blockers" onClick={noBlockers}>No Blockers</DebugButton>);
+				break;
+		}
 	}
 
 	return (

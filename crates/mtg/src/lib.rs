@@ -1,5 +1,5 @@
 use mtg_engine::{
-    action::Action,
+    action::PlayerAction,
     components::{Card, Object, Permanent, Player},
     game::Game,
     hecs::Entity,
@@ -42,7 +42,7 @@ impl JsGame {
     #[wasm_bindgen(js_name = "doAction")]
     pub fn do_action(&mut self, player: JsValue, action: JsValue) {
         let player: Entity = player.into_serde().unwrap();
-        let action: Action = action.into_serde().unwrap();
+        let action: PlayerAction = action.into_serde().unwrap();
 
         self.inner.do_action(player, action);
     }

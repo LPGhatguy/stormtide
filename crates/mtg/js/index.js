@@ -52,7 +52,7 @@ const profilePictures = [player1, player2];
 
 const getPriority = game => {
 	const state = game.state();
-	if (state.type === "Priority") {
+	if (state.type === "Player" && state.action === "Priority") {
 		return state.player;
 	} else {
 		return null;

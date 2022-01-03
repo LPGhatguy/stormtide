@@ -1,4 +1,4 @@
-use mtg_engine::action::Action;
+use mtg_engine::action::PlayerAction;
 use mtg_engine::components::UntilEotEffect;
 use mtg_engine::game::Game;
 use mtg_engine::pt::{AdjustPtEffect, PtValue};
@@ -42,7 +42,7 @@ fn main() {
 
     while game.turn_number() < 3 {
         println!("{:?}", game);
-        game.do_action(game.priority_player().unwrap(), Action::PassPriority);
+        game.do_action(game.priority_player().unwrap(), PlayerAction::PassPriority);
 
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
