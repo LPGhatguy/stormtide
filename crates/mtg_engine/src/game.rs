@@ -59,7 +59,7 @@ pub struct Game {
     // TODO: Triggered abilities that haven't been placed on the stack yet.
     // These abilities will be placed on an order in APNAP order, with each
     // player choosing how to order the individual triggers.
-    pending_triggers: (),
+    _pending_triggers: (),
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -132,7 +132,7 @@ impl Game {
             step: Step::Upkeep,
             state: GameState::priority(player1),
             zones,
-            pending_triggers: (),
+            _pending_triggers: (),
         }
     }
 
@@ -1180,7 +1180,6 @@ impl Debug for Game {
 ///        place every turn, even if nothing happens during the phase. The
 ///        beginning, combat, and ending phases are further broken down into
 ///        steps, which proceed in order.
-#[allow(unused)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Step {
     // 501.1. The beginning phase consists of three steps, in this order: untap,
