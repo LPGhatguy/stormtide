@@ -1,3 +1,5 @@
+mod ffi;
+
 use mtg_engine::{
     action::PlayerAction,
     components::{Card, Object, Permanent, Player},
@@ -40,14 +42,15 @@ impl JsGame {
     }
 
     #[wasm_bindgen(js_name = "doAction")]
-    pub fn do_action(&mut self, player: JsValue, action: JsValue) {
-        let player: Entity = player.into_serde().unwrap();
-        let action: PlayerAction = action.into_serde().unwrap();
+    pub fn do_action(&mut self, player: JsValue, action: JsValue) -> Result<(), JsValue> {
+        let player: Entity = ffi::from_js(player)?;
+        let action: PlayerAction = ffi::from_js(action)?;
 
         self.inner.do_action(player, action);
+        Ok(())
     }
 
-    pub fn players(&self) -> JsValue {
+    pub fn players(&self) -> Result<JsValue, JsValue> {
         let players = self
             .inner
             .players()
@@ -64,12 +67,12 @@ impl JsGame {
             })
             .collect::<Vec<_>>();
 
-        JsValue::from_serde(&players).unwrap()
+        ffi::to_js(&players)
     }
 
     #[wasm_bindgen(js_name = "objectsInZone")]
-    pub fn objects_in_zone(&self, zone: &JsValue) -> JsValue {
-        let zone_id: ZoneId = zone.into_serde().unwrap();
+    pub fn objects_in_zone(&self, zone: JsValue) -> Result<JsValue, JsValue> {
+        let zone_id: ZoneId = ffi::from_js(zone)?;
 
         let entities = self.inner.zone(zone_id).unwrap().members();
         let output = entities
@@ -97,15 +100,15 @@ impl JsGame {
             })
             .collect::<Vec<_>>();
 
-        JsValue::from_serde(&output).unwrap()
+        ffi::to_js(&output)
     }
 
-    pub fn step(&self) -> JsValue {
-        JsValue::from_serde(&self.inner.step()).unwrap()
+    pub fn step(&self) -> Result<JsValue, JsValue> {
+        ffi::to_js(&self.inner.step())
     }
 
-    pub fn state(&self) -> JsValue {
-        JsValue::from_serde(self.inner.state()).unwrap()
+    pub fn state(&self) -> Result<JsValue, JsValue> {
+        ffi::to_js(self.inner.state())
     }
 }
 
@@ -121,15 +124,13 @@ impl JsObjectDb {
         self.inner.card_id(name).map(|id| id.0)
     }
 
-    pub fn card(&self, id: u32) -> JsValue {
-        let card = self.inner.card(CardId(id));
-        JsValue::from_serde(&card).unwrap()
+    pub fn card(&self, id: u32) -> Result<JsValue, JsValue> {
+        ffi::to_js(&self.inner.card(CardId(id)))
     }
 
     #[wasm_bindgen(js_name = "cardByName")]
-    pub fn card_by_name(&self, name: &str) -> JsValue {
-        let card = self.inner.card_by_name(name);
-        JsValue::from_serde(&card).unwrap()
+    pub fn card_by_name(&self, name: &str) -> Result<JsValue, JsValue> {
+        ffi::to_js(&self.inner.card_by_name(name))
     }
 }
 

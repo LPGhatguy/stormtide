@@ -137,8 +137,7 @@ impl Game {
     }
 
     /// Temporary method to update our zones index from world information.
-    #[allow(non_snake_case)]
-    pub fn HACK_rebuild_zone_index(&mut self) {
+    pub fn rebuild_zone_index(&mut self) {
         for zone in self.zones.values_mut() {
             zone.clear();
         }

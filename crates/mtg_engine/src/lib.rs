@@ -6,6 +6,7 @@ pub mod counters;
 pub mod game;
 pub mod ident;
 pub mod keyword_ability;
+pub mod mana_pool;
 pub mod object_db;
 pub mod pt;
 pub mod queries;

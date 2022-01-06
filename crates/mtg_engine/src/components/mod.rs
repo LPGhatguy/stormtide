@@ -6,6 +6,7 @@ use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
 use crate::counters::Counter;
+use crate::mana_pool::ManaId;
 use crate::object_db::CardId;
 use crate::pt::PtCharacteristic;
 
@@ -40,6 +41,11 @@ pub struct AttachedToEntity {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Card {
     pub id: CardId,
+}
+
+#[derive(Debug)]
+pub struct IncompleteSpell {
+    pub cost_paid: Vec<ManaId>,
 }
 
 #[derive(Debug)]
