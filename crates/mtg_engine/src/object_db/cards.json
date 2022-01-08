@@ -10,9 +10,9 @@
 		"name": "Grizzly Bears",
 		"types": ["Creature"],
 		"subtypes": ["Bear"],
-		"primary_cost": [
-			"GenericMana",
-			{ "ColoredMana": "Green" }
+		"mana_cost": [
+			{ "type": "GenericMana" },
+			{ "type": "ColoredMana", "color": "Green" }
 		],
 		"pt": {
 			"Normal": {
@@ -25,17 +25,17 @@
 	{
 		"name": "Giant Growth",
 		"types": ["Instant"],
-		"primary_cost": [
-			{ "ColoredMana": "Green" }
+		"mana_cost": [
+			{ "type": "ColoredMana", "color": "Green" }
 		],
 		"image": "https://c1.scryfall.com/file/scryfall-cards/normal/front/6/b/6b712e6e-eb48-4a71-b95d-ce343966b236.jpg?1562436546"
 	},
 	{
 		"name": "Larger than Life",
 		"types": ["Sorcery"],
-		"primary_cost": [
-			"GenericMana",
-			{ "ColoredMana": "Green" }
+		"mana_cost": [
+			{ "type": "GenericMana" },
+			{ "type": "ColoredMana", "color": "Green" }
 		],
 		"image": "https://c1.scryfall.com/file/scryfall-cards/normal/front/3/d/3d0da994-d3e7-41b9-ae8f-6f1a3b779f23.jpg?1576382561"
 	}

@@ -1,6 +1,7 @@
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+use crate::cost::ManaCost;
 use crate::ident::Ident;
 use crate::pt::PtCharacteristic;
 use crate::types::{CardSubtype, CardSupertype, CardType};
@@ -23,6 +24,7 @@ pub struct Object {
     pub supertypes: Vec<CardSupertype>,
     pub subtypes: Vec<CardSubtype>,
     pub pt: Option<PtCharacteristic>,
+    pub mana_cost: Option<ManaCost>,
 
     pub zone: ZoneId,
 

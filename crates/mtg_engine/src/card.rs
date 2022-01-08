@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::cost::Cost;
+use crate::cost::ManaCost;
 use crate::ident::Ident;
 use crate::pt::PtCharacteristic;
 use crate::types::{CardSubtype, CardSupertype, CardType};
@@ -19,7 +19,7 @@ pub struct CardDescriptor {
     pub subtypes: Vec<CardSubtype>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub primary_cost: Option<Cost>,
+    pub mana_cost: Option<ManaCost>,
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<String>,

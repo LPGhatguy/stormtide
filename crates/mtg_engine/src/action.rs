@@ -1,6 +1,8 @@
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+use crate::mana_pool::ManaId;
+
 /// Describes an action that a player can take in the game.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -32,20 +34,24 @@ pub enum PlayerAction {
     /// 117.1a A player may cast an instant spell any time they have priority. A
     ///        player may cast a noninstant spell during their main phase any
     ///        time they have priority and the stack is empty.
-    CastSpell {
+    StartCastingSpell {
         spell: Entity,
-        // TODO: Targets
-        // TODO: Costs
     },
 
-    /// 117.1b A player may activate an activated ability any time they have
-    ///        priority.
-    ActivateAbility {
-        object: Entity,
-        ability: usize,
-        // TODO: Targets
-        // TODO: Costs
+    /// Pay part of the mana cost of an incomplete spell.
+    PayIncompleteSpellMana {
+        spell: Entity,
+        mana: ManaId,
     },
+
+    FinishCastingSpell {
+        spell: Entity,
+    },
+    CancelCastingSpell {
+        spell: Entity,
+    },
+    // 117.1b A player may activate an activated ability any time they have
+    //        priority.
     // TODO: Rules 116.2b—116.2i
 }
 
@@ -55,6 +61,19 @@ pub enum PlayerActionCategory {
     /// like the untap and cleanup steps, players do not normally receive
     /// priority.
     Priority,
+
     ChooseAttackers,
     ChooseBlockers,
+
+    /// A player is in the window where they can activate mana abilities to pay
+    /// for a spell.
+    ///
+    /// 601.2g If the total cost includes a mana payment, the player then has a
+    ///        chance to activate mana abilities (see rule 605, “Mana
+    ///        Abilities”). Mana abilities must be activated before costs are
+    ///        paid.
+    SpellManaAbilities,
+
+    /// A player is paying the costs for a spell.
+    SpellPayingCost,
 }

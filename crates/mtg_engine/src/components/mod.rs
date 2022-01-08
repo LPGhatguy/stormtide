@@ -5,10 +5,12 @@ use std::collections::BTreeSet;
 use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
+use crate::cost::ManaCost;
 use crate::counters::Counter;
 use crate::mana_pool::ManaId;
 use crate::object_db::CardId;
 use crate::pt::PtCharacteristic;
+use crate::zone::ZoneId;
 
 mod object;
 mod player;
@@ -45,7 +47,21 @@ pub struct Card {
 
 #[derive(Debug)]
 pub struct IncompleteSpell {
-    pub cost_paid: Vec<ManaId>,
+    pub previous_zone: ZoneId,
+    pub total_cost: ManaCost,
+    pub mana_paid: Vec<ManaId>,
+    pub targets: Vec<Entity>,
+}
+
+impl IncompleteSpell {
+    pub fn new(previous_zone: ZoneId, total_cost: ManaCost) -> Self {
+        Self {
+            previous_zone,
+            total_cost,
+            mana_paid: Vec::new(),
+            targets: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug)]

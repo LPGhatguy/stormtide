@@ -1,5 +1,10 @@
 //! Defines the high-level structure describing a game of Magic.
 
+mod casting;
+mod combat;
+mod state_based_actions;
+pub mod util;
+
 use std::collections::{HashMap, HashSet};
 use std::fmt::{self, Debug};
 
@@ -8,9 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     action::{PlayerAction, PlayerActionCategory},
-    components::{
-        AttachedToEntity, Card, Creature, Damage, Object, Permanent, Player, UntilEotEffect,
-    },
+    components::{Card, Creature, Damage, Object, Permanent, Player, UntilEotEffect},
     object_db::{CardId, ObjectDb},
     queries::Query,
     types::CardType,
@@ -65,12 +68,6 @@ pub struct Game {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum GameState {
-    /// The game is processing. No players can do anything right now.
-    ///
-    /// It is an error if the rules engine exits from a public method with this
-    /// state.
-    Processing,
-
     /// The game is waiting on a player to do something. This can vary from a
     /// player having priority, to choosing a spell's target or how to pay a
     /// cost.
@@ -168,6 +165,7 @@ impl Game {
             types: descriptor.types.clone(),
             supertypes: descriptor.supertypes.clone(),
             subtypes: descriptor.subtypes.clone(),
+            mana_cost: descriptor.mana_cost.clone(),
             pt: descriptor.pt,
             zone: zone_id,
             owner,
@@ -318,26 +316,26 @@ impl Game {
             PlayerAction::PassPriority => self.pass_priority(player),
 
             PlayerAction::ChooseAttackers { attackers } => {
-                self.choose_attackers(player, &attackers);
+                combat::choose_attackers(self, player, &attackers)
             }
 
             PlayerAction::ChooseBlockers { blockers } => {
-                self.choose_blockers(player, &blockers);
+                combat::choose_blockers(self, player, &blockers)
             }
 
-            PlayerAction::PlayLand { card } => {
-                self.play_land(player, card);
+            PlayerAction::PlayLand { card } => self.play_land(player, card),
+            PlayerAction::StartCastingSpell { spell } => {
+                casting::start_casting_spell(self, player, spell)
             }
-
-            PlayerAction::CastSpell { spell } => {
-                unimplemented!("player {:?} casting spell {:?}", player, spell)
+            PlayerAction::FinishCastingSpell { spell } => {
+                casting::finish_casting_spell(self, player, spell)
             }
-            PlayerAction::ActivateAbility { object, ability } => unimplemented!(
-                "player {:?} activating ability #{} on object {:?}",
-                player,
-                ability,
-                object
-            ),
+            PlayerAction::CancelCastingSpell { spell } => {
+                casting::cancel_casting_spell(self, player, spell)
+            }
+            PlayerAction::PayIncompleteSpellMana { spell, mana } => {
+                casting::pay_spell_mana(self, player, spell, mana)
+            }
         }
     }
 
@@ -366,158 +364,10 @@ impl Game {
     ///        ends.
     fn apply_state_based_actions(&mut self) {
         loop {
-            if !self.apply_state_based_actions_step() {
+            if !state_based_actions::apply(self) {
                 break;
             }
         }
-    }
-
-    fn apply_state_based_actions_step(&mut self) -> bool {
-        let mut actions_performed = false;
-
-        // Clear any effects attached to objects that no longer exist.
-        {
-            let mut entities_to_despawn = Vec::new();
-            let mut query = self.world.query::<(&AttachedToEntity,)>();
-
-            // Should this be applied recursively? For simplicity, it is not,
-            // but this means that nested chains of attachments may not be
-            // removed correctly.
-            for (entity, (attached,)) in query.iter() {
-                if !self.world.contains(attached.target) {
-                    entities_to_despawn.push(entity);
-                    actions_performed = true;
-                }
-            }
-
-            drop(query);
-
-            for entity in entities_to_despawn {
-                self.world.despawn(entity).unwrap();
-            }
-        }
-
-        // 704.5a If a player has 0 or less life, that player loses the game.
-        {
-            let mut player_query = self.world.query::<(&mut Player,)>();
-
-            for (_entity, (player,)) in player_query.iter() {
-                if !player.has_lost && player.life <= 0 {
-                    // TODO: Check if player is exempt from this SBA, like via
-                    // Phyrexian Unlife.
-                    player.has_lost = true;
-                    actions_performed = true;
-                }
-            }
-        }
-
-        // 704.5b If a player attempted to draw a card from a library with no
-        //        cards in it since the last time state-based actions were
-        //        checked, that player loses the game.
-        //
-        // TODO
-
-        // 704.5c If a player has ten or more poison counters, that player loses
-        //        the game. Ignore this rule in Two-Headed Giant games; see rule
-        //        704.6b instead.
-        //
-        // TODO
-
-        // 704.5d If a token is in a zone other than the battlefield, it ceases
-        //        to exist.
-        //
-        // TODO
-
-        // 704.5e If a copy of a spell is in a zone other than the stack, it
-        //        ceases to exist. If a copy of a card is in any zone other than
-        //        the stack or the battlefield, it ceases to exist.
-        //
-        // TODO
-
-        // 704.5f If a creature has toughness 0 or less, it’s put into its
-        //        owner’s graveyard. Regeneration can’t replace this event.
-        //
-        // TODO
-
-        // 704.5g If a creature has toughness greater than 0, it has damage
-        //        marked on it, and the total damage marked on it is greater
-        //        than or equal to its toughness, that creature has been dealt
-        //        lethal damage and is destroyed. Regeneration can replace this
-        //        event.
-        //
-        // TODO
-
-        // 704.5h If a creature has toughness greater than 0, and it’s been
-        //        dealt damage by a source with deathtouch since the last time
-        //        state-based actions were checked, that creature is destroyed.
-        //        Regeneration can replace this event.
-        //
-        // TODO
-
-        // 704.5i If a planeswalker has loyalty 0, it’s put into its owner’s
-        //        graveyard.
-        //
-        // TODO
-
-        // 704.5j If a player controls two or more legendary permanents with the
-        //        same name, that player chooses one of them, and the rest are
-        //        put into their owners’ graveyards. This is called the “legend
-        //        rule.”
-        //
-        // TODO
-
-        // 704.5k If two or more permanents have the supertype world, all except
-        //        the one that has had the world supertype for the shortest
-        //        amount of time are put into their owners’ graveyards. In the
-        //        event of a tie for the shortest amount of time, all are put
-        //        into their owners’ graveyards. This is called the “world
-        //        rule.”
-        //
-        // TODO
-
-        // 704.5m If an Aura is attached to an illegal object or player, or is
-        //        not attached to an object or player, that Aura is put into its
-        //        owner’s graveyard.
-        //
-        // TODO
-
-        // 704.5n If an Equipment or Fortification is attached to an illegal
-        //        permanent or to a player, it becomes unattached from that
-        //        permanent or player. It remains on the battlefield.
-        //
-        // TODO
-
-        // 704.5p If a creature is attached to an object or player, it becomes
-        //        unattached and remains on the battlefield. Similarly, if a
-        //        permanent that’s neither an Aura, an Equipment, nor a
-        //        Fortification is attached to an object or player, it becomes
-        //        unattached and remains on the battlefield.
-        //
-        // TODO
-
-        // 704.5q If a permanent has both a +1/+1 counter and a -1/-1 counter on
-        //        it, N +1/+1 and N -1/-1 counters are removed from it, where N
-        //        is the smaller of the number of +1/+1 and -1/-1 counters on
-        //        it.
-        //
-        // TODO
-
-        // 704.5r If a permanent with an ability that says it can’t have more
-        //        than N counters of a certain kind on it has more than N
-        //        counters of that kind on it, all but N of those counters are
-        //        removed from it.
-        //
-        // TODO
-
-        // 704.5s If the number of lore counters on a Saga permanent is greater
-        //        than or equal to its final chapter number and it isn’t the
-        //        source of a chapter ability that has triggered but not yet
-        //        left the stack, that Saga’s controller sacrifices it. See rule
-        //        714, “Saga Cards.”
-        //
-        // TODO
-
-        actions_performed
     }
 
     fn pass_priority(&mut self, player: Entity) {
@@ -541,7 +391,6 @@ impl Game {
         if self.players_that_have_passed.contains(&next_player) {
             log::debug!("All players have passed");
 
-            self.state = GameState::Processing;
             self.players_that_have_passed.clear();
 
             let stack = &self.zones[&ZoneId::Stack];
@@ -673,150 +522,11 @@ impl Game {
                 self.state = GameState::priority(self.active_player);
             }
 
-            // 507. Beginning of Combat Step
-            Step::BeginCombat => {
-                // 507.1. First, if the game being played is a multiplayer game
-                //        in which the active player’s opponents don’t all
-                //        automatically become defending players, the active
-                //        player chooses one of their opponents. That player
-                //        becomes the defending player. This turn-based action
-                //        doesn’t use the stack. (See rule 506.2.)
-                //
-                // TODO
-
-                // 507.2. Second, the active player gets priority. (See rule
-                //        117, “Timing and Priority.”)
-                self.state = GameState::priority(self.active_player);
-            }
-
-            // 508. Declare Attackers Step
-            Step::DeclareAttackers => {
-                // 508.1. First, the active player declares attackers. This
-                //        turn-based action doesn’t use the stack. To declare
-                //        attackers, the active player follows the steps below,
-                //        in order. If at any point during the declaration of
-                //        attackers, the active player is unable to comply with
-                //        any of the steps listed below, the declaration is
-                //        illegal; the game returns to the moment before the
-                //        declaration (see rule 726, “Handling Illegal
-                //        Actions”).
-                self.state = GameState::Player {
-                    player: self.active_player,
-                    action: PlayerActionCategory::ChooseAttackers,
-                };
-            }
-
-            // 509. Declare Blockers Step
-            Step::DeclareBlockers => {
-                // TODO: Choose player who is defender instead of just "not the
-                // active player"
-                let nap = *self
-                    .turn_order
-                    .iter()
-                    .find(|p| **p != self.active_player)
-                    .unwrap();
-
-                // 509.1. First, the defending player declares blockers. This
-                //        turn-based action doesn’t use the stack. To declare
-                //        blockers, the defending player follows the steps
-                //        below, in order. If at any point during the
-                //        declaration of blockers, the defending player is
-                //        unable to comply with any of the steps listed below,
-                //        the declaration is illegal; the game returns to the
-                //        moment before the declaration (see rule 726, “Handling
-                //        Illegal Actions”).
-                self.state = GameState::Player {
-                    player: nap,
-                    action: PlayerActionCategory::ChooseBlockers,
-                };
-
-                // 509.2. Second, for each attacking creature that’s become
-                //        blocked, the active player announces that creature’s
-                //        damage assignment order, which consists of the
-                //        creatures blocking it in an order of that player’s
-                //        choice. (During the combat damage step, an attacking
-                //        creature can’t assign combat damage to a creature
-                //        that’s blocking it unless each creature ahead of that
-                //        blocking creature in its order is assigned lethal
-                //        damage.) This turn-based action doesn’t use the stack.
-                //
-                // TODO
-
-                // 509.3. Third, for each blocking creature, the defending
-                //        player announces that creature’s damage assignment
-                //        order, which consists of the creatures it’s blocking
-                //        in an order of that player’s choice. (During the
-                //        combat damage step, a blocking creature can’t assign
-                //        combat damage to a creature it’s blocking unless each
-                //        creature ahead of that blocked creature in its order
-                //        is assigned lethal damage.) This turn-based action
-                //        doesn’t use the stack.
-                //
-                // TODO
-
-                // 509.4. Fourth, the active player gets priority. (See rule 117, “Timing and Priority.”)
-                //
-                // 509.4a Any abilities that triggered on blockers being
-                //        declared or that triggered during the process
-                //        described in rules 509.1–3 are put onto the stack
-                //        before the active player gets priority; the order in
-                //        which they triggered doesn’t matter. (See rule 603,
-                //        “Handling Triggered Abilities.”)
-                //
-                // TODO
-            }
-
-            // 510. Combat Damage Step
-            Step::CombatDamage => {
-                // 510.1. First, the active player announces how each attacking
-                //        creature assigns its combat damage, then the defending
-                //        player announces how each blocking creature assigns
-                //        its combat damage. This turn-based action doesn’t use
-                //        the stack. A player assigns a creature’s combat damage
-                //        according to the following rules:
-                //
-                // TODO
-
-                // 510.2. Second, all combat damage that’s been assigned is
-                //        dealt simultaneously. This turn-based action doesn’t
-                //        use the stack. No player has the chance to cast spells
-                //        or activate abilities between the time combat damage
-                //        is assigned and the time it’s dealt.
-                //
-                // TODO
-
-                // 510.3. Third, the active player gets priority. (See rule 117, “Timing and Priority.”)
-                //
-                // 510.3a Any abilities that triggered on damage being dealt or
-                //        while state-based actions are performed afterward are
-                //        put onto the stack before the active player gets
-                //        priority; the order in which they triggered doesn’t
-                //        matter. (See rule 603, “Handling Triggered
-                //        Abilities.”)
-                self.state = GameState::priority(self.active_player);
-            }
-
-            // 511. End of Combat Step
-            Step::EndCombat => {
-                // 511.1. The end of combat step has no turn-based actions. Once
-                //        it begins, the active player gets priority. (See rule
-                //        117, “Timing and Priority.”)
-                self.state = GameState::priority(self.active_player);
-
-                // 511.2. Abilities that trigger “at end of combat” trigger as
-                //        the end of combat step begins. Effects that last
-                //        “until end of combat” expire at the end of the combat
-                //        phase.
-                //
-                // TODO
-
-                // 511.3. As soon as the end of combat step ends, all creatures
-                //        and planeswalkers are removed from combat. After the
-                //        end of combat step ends, the combat phase is over and
-                //        the postcombat main phase begins (see rule 505).
-                //
-                // TODO
-            }
+            Step::BeginCombat => combat::enter_begin_combat(self),
+            Step::DeclareAttackers => combat::enter_declare_attackers(self),
+            Step::DeclareBlockers => combat::enter_declare_blockers(self),
+            Step::CombatDamage => combat::enter_combat_damage(self),
+            Step::EndCombat => combat::enter_end_combat(self),
 
             // 513. End Step
             Step::End => {
@@ -933,187 +643,6 @@ impl Game {
         }
     }
 
-    fn attackers_valid(&mut self, player: Entity, attackers: &[Entity]) -> Result<(), String> {
-        // 508. Declare Attackers Step
-
-        // 508.1a The active player chooses which creatures that they control,
-        //        if any, will attack. The chosen creatures must be untapped,
-        //        and each one must either have haste or have been controlled by
-        //        the active player continuously since the turn began.
-        for &attacker in attackers {
-            let entity = self
-                .world
-                .entity(attacker)
-                .map_err(|_| format!("Entity {:?} did not exist", attacker))?;
-
-            let object = entity
-                .get::<Object>()
-                .ok_or_else(|| format!("Entity {:?} is not an Object", attacker))?;
-
-            if object.controller != Some(player) {
-                return Err(format!(
-                    "Entity {:?} is not controlled by {:?}",
-                    attacker, player
-                ));
-            }
-
-            // FIXME: Use type query instead to figure out whether something is
-            // a permanent.
-            let permanent = entity
-                .get::<Permanent>()
-                .ok_or_else(|| format!("Entity {:?} is not a permanent", attacker))?;
-
-            // FIXME: Use type query instead to figure out whether something is
-            // a creature.
-            if !entity.has::<Creature>() {
-                return Err(format!("Entity {:?} is not a creature", attacker));
-            }
-
-            if permanent.tapped {
-                return Err(format!("Creature {:?} is tapped", attacker));
-            }
-
-            // TODO: Check for control timestamp or haste.
-        }
-
-        // 508.1b If the defending player controls any planeswalkers, or the
-        //        game allows the active player to attack multiple other
-        //        players, the active player announces which player or
-        //        planeswalker each of the chosen creatures is attacking.
-        //
-        // TODO: This should be part of the declaration information.
-
-        // 508.1c The active player checks each creature they control to see
-        //        whether it’s affected by any restrictions (effects that say a
-        //        creature can’t attack, or that it can’t attack unless some
-        //        condition is met). If any restrictions are being disobeyed,
-        //        the declaration of attackers is illegal.
-        //
-        // TODO
-        //
-        // Example card: Pacifism
-
-        // 508.1d The active player checks each creature they control to see
-        //        whether it’s affected by any requirements (effects that say a
-        //        creature attacks if able, or that it attacks if some condition
-        //        is met). If the number of requirements that are being obeyed
-        //        is fewer than the maximum possible number of requirements that
-        //        could be obeyed without disobeying any restrictions, the
-        //        declaration of attackers is illegal. If a creature can’t
-        //        attack unless a player pays a cost, that player is not
-        //        required to pay that cost, even if attacking with that
-        //        creature would increase the number of requirements being
-        //        obeyed. If a requirement that says a creature attacks if able
-        //        during a certain turn refers to a turn with multiple combat
-        //        phases, the creature attacks if able during each declare
-        //        attackers step in that turn.
-        //
-        // TODO
-        //
-        // Example card: Curse of the Nightly Hunt
-
-        Ok(())
-    }
-
-    fn choose_attackers(&mut self, player: Entity, attackers: &[Entity]) {
-        let required_state = GameState::Player {
-            player,
-            action: PlayerActionCategory::ChooseAttackers,
-        };
-
-        if self.state != required_state {
-            log::warn!("Player {:?} cannot choose attackers right now.", player);
-            return;
-        }
-
-        if let Err(reason) = self.attackers_valid(player, attackers) {
-            log::warn!("Attackers were not valid: {}", reason);
-            return;
-        }
-
-        // 508.1e If any of the chosen creatures have banding or a “bands with
-        //        other” ability, the active player announces which creatures,
-        //        if any, are banded with which. (See rule 702.22, “Banding.”)
-        //
-        // TODO
-
-        // 508.1f The active player taps the chosen creatures. Tapping a
-        //        creature when it’s declared as an attacker isn’t a cost;
-        //        attacking simply causes creatures to become tapped.
-        for &attacker in attackers {
-            let mut permanent = self.world.get_mut::<Permanent>(attacker).unwrap();
-            permanent.tapped = true;
-        }
-
-        // 508.1g If there are any optional costs to attack with the chosen
-        //        creatures (expressed as costs a player may pay “as” a creature
-        //        attacks), the active player chooses which, if any, they will
-        //        pay.
-        //
-        // TODO
-
-        // 508.1h If any of the chosen creatures require paying costs to attack,
-        //        or if any optional costs to attack were chosen, the active
-        //        player determines the total cost to attack. Costs may include
-        //        paying mana, tapping permanents, sacrificing permanents,
-        //        discarding cards, and so on. Once the total cost is
-        //        determined, it becomes “locked in.” If effects would change
-        //        the total cost after this time, ignore this change.
-        //
-        // TODO
-
-        // 508.1i If any of the costs require mana, the active player then has a
-        //        chance to activate mana abilities (see rule 605, “Mana
-        //        Abilities”).
-        //
-        // TODO
-
-        // 508.1j Once the player has enough mana in their mana pool, they pay
-        //        all costs in any order. Partial payments are not allowed.
-        //
-        // TODO
-
-        // 508.1k Each chosen creature still controlled by the active player
-        //        becomes an attacking creature. It remains an attacking
-        //        creature until it’s removed from combat or the combat phase
-        //        ends, whichever comes first. See rule 506.4.
-        //
-        // TODO
-
-        // 508.1m Any abilities that trigger on attackers being declared
-        //        trigger.
-        // TODO
-
-        // 508.2. Second, the active player gets priority. (See rule 117,
-        //        “Timing and Priority.”)
-        self.state = GameState::priority(self.active_player);
-    }
-
-    fn blockers_valid(&self, _player: Entity, _blockers: &[Entity]) -> Result<(), String> {
-        Ok(())
-    }
-
-    fn choose_blockers(&mut self, player: Entity, blockers: &[Entity]) {
-        let required_state = GameState::Player {
-            player,
-            action: PlayerActionCategory::ChooseBlockers,
-        };
-
-        if self.state != required_state {
-            log::warn!("Player {:?} cannot choose blockers right now.", player);
-            return;
-        }
-
-        if let Err(reason) = self.blockers_valid(player, blockers) {
-            log::warn!("Blockers were not valid: {}", reason);
-            return;
-        }
-
-        // TODO
-
-        self.state = GameState::priority(self.active_player);
-    }
-
     fn play_land(&mut self, player: Entity, land: Entity) {
         // 116.2a Playing a land is a special action. To play a land, a player
         //        puts that land onto the battlefield from the zone it was in
@@ -1159,7 +688,7 @@ impl Game {
         }
 
         if let Err(err) = inner(self, player, land) {
-            log::warn!("Player {:?} cannot play land {:?}: {}", player, land, err);
+            log::error!("Player {:?} cannot play land {:?}: {}", player, land, err);
         }
     }
 }

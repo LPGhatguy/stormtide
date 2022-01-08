@@ -7,6 +7,31 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::mana_pool::Mana;
+
+/// 202. Mana Cost and Color
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ManaCost {
+    pub items: Vec<ManaCostItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ManaCostItem {
+    ColoredMana { color: ManaColor },
+    GenericMana,
+}
+
+impl ManaCostItem {
+    pub fn can_be_paid_with(&self, mana: &Mana) -> bool {
+        match self {
+            ManaCostItem::ColoredMana { color } => mana.color == *color,
+            ManaCostItem::GenericMana => true,
+        }
+    }
+}
+
 /// An action or payment necessary to take another action or to stop another
 /// action from taking place. See rule 118, "Costs."
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,38 +62,33 @@ pub enum CostItem {
     ///        mana, and also to represent a cost that can be paid only with one
     ///        colorless mana.
     ColorlessMana,
-
-    /// 107.4e Hybrid mana symbols are also colored mana symbols. Each one
-    ///        represents a cost that can be paid in one of two ways, as
-    ///        represented by the two halves of the symbol. A hybrid symbol such
-    ///        as {W/U} can be paid with either white or blue mana, and a
-    ///        monocolored hybrid symbol such as {2/B} can be paid with either
-    ///        one black mana or two mana of any type. A hybrid mana symbol is
-    ///        all of its component colors.
-    ///
-    ///        Example: {G/W}{G/W} can be paid by spending {G}{G}, {G}{W}, or
-    ///        {W}{W}.
-    HybridMana(ManaColor, ManaColor),
-    MonocoloredHybridMana(ManaColor),
-
-    /// 107.4f Phyrexian mana symbols are colored mana symbols: {W/P} is white,
-    ///        {U/P} is blue, {B/P} is black, {R/P} is red, and {G/P} is green.
-    ///        A Phyrexian mana symbol represents a cost that can be paid either
-    ///        with one mana of its color or by paying 2 life.
-    ///
-    ///        Example: {W/P}{W/P} can be paid by spending {W}{W}, by spending
-    ///        {W} and paying 2 life, or by paying 4 life.
-    PhyrexianMana(ManaColor),
-
-    /// 107.4h The snow mana symbol {S} represents one mana in a cost. This mana
-    ///        can be paid with one mana of any type produced by a snow
-    ///        permanent (see rule 205.4g). Effects that reduce the amount of
-    ///        generic mana you pay don’t affect {S} costs. Snow is neither a
-    ///        color nor a type of mana.
-    SnowMana,
+    // 107.4e Hybrid mana symbols are also colored mana symbols. Each one
+    //        represents a cost that can be paid in one of two ways, as
+    //        represented by the two halves of the symbol. A hybrid symbol such
+    //        as {W/U} can be paid with either white or blue mana, and a
+    //        monocolored hybrid symbol such as {2/B} can be paid with either
+    //        one black mana or two mana of any type. A hybrid mana symbol is
+    //        all of its component colors.
+    //
+    //        Example: {G/W}{G/W} can be paid by spending {G}{G}, {G}{W}, or
+    //        {W}{W}.
+    //
+    // 107.4f Phyrexian mana symbols are colored mana symbols: {W/P} is white,
+    //        {U/P} is blue, {B/P} is black, {R/P} is red, and {G/P} is green.
+    //        A Phyrexian mana symbol represents a cost that can be paid either
+    //        with one mana of its color or by paying 2 life.
+    //
+    //        Example: {W/P}{W/P} can be paid by spending {W}{W}, by spending
+    //        {W} and paying 2 life, or by paying 4 life.
+    //
+    // 107.4h The snow mana symbol {S} represents one mana in a cost. This mana
+    //        can be paid with one mana of any type produced by a snow
+    //        permanent (see rule 205.4g). Effects that reduce the amount of
+    //        generic mana you pay don’t affect {S} costs. Snow is neither a
+    //        color nor a type of mana.
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum ManaColor {
     White,
     Blue,
