@@ -1,182 +1,183 @@
-import init, { engineInit, Game } from "mtg";
-import React, { useContext } from "react";
-import { render } from "react-dom";
-import styled from "styled-components";
+import init, { engineInit, Game } from "mtg"
+import React, { useContext } from "react"
+import { render } from "react-dom"
+import styled from "styled-components"
 
-import Steps from "./components/Steps";
-import GameRoot, { GameContext } from "./components/GameRoot";
-import Card from "./components/Card";
-import PlayerPanel from "./components/PlayerPanel";
+import Steps from "./components/Steps"
+import GameRoot, { GameContext } from "./components/GameRoot"
+import Card from "./components/Card"
+import PlayerPanel from "./components/PlayerPanel"
 
-import card_back from "../assets/card-back.png";
-import player1 from "../assets/player1.png";
-import player2 from "../assets/player2.png";
+import card_back from "../assets/card-back.png"
+import player1 from "../assets/player1.png"
+import player2 from "../assets/player2.png"
 
 const GameContainer = styled.div`
-	flex: 1 0;
+  flex: 1 0;
 
-	display: flex;
-	flex-direction: column;
-`;
+  display: flex;
+  flex-direction: column;
+`
 
 const Player = styled.div`
-	flex: 1 0;
-	display: flex;
-`;
+  flex: 1 0;
+  display: flex;
+`
 
 const MainPlayfield = styled.div`
-	flex: 1 0;
-	background-color: #242526;
+  flex: 1 0;
+  background-color: #242526;
 
-	display: flex;
-	gap: 0.5rem;
-	flex-direction: ${props => props.top ? "column-reverse" : "column"};
-	${props => props.top ? "padding-bottom" : "padding-top"}: 0.5rem;
-`;
+  display: flex;
+  gap: 0.5rem;
+  flex-direction: ${(props) => (props.top ? "column-reverse" : "column")};
+  ${(props) => (props.top ? "padding-bottom" : "padding-top")}: 0.5rem;
+`
 
 const BattlefieldRow = styled.div`
-	flex: 1 1 2rem;
+  flex: 1 1 2rem;
 
-	display: flex;
-	justify-content: center;
-`;
+  display: flex;
+  justify-content: center;
+`
 
 const Hand = styled.div`
-	flex: 1 1 1rem;
+  flex: 1 1 1rem;
 
-	display: flex;
-	background-color: rgba(0, 0, 0, 0.5);
-`;
+  display: flex;
+  background-color: rgba(0, 0, 0, 0.5);
+`
 
-const profilePictures = [player1, player2];
+const profilePictures = [player1, player2]
 
-const getPriority = game => {
-	const state = game.state();
-	if (state.type === "Player" && state.action === "Priority") {
-		return state.player;
-	} else {
-		return null;
-	}
-};
+const getPriority = (game) => {
+  const state = game.state()
+  if (state.type === "Player" && state.action === "Priority") {
+    return state.player
+  } else {
+    return null
+  }
+}
 
 function Main() {
-	const { game, doAction } = useContext(GameContext);
+  const { game, doAction } = useContext(GameContext)
 
-	const priority = getPriority(game);
-	const battlefield = game.objectsInZone("Battlefield");
-	const stack = game.objectsInZone("Stack");
-	const players = game.players().map((player, index) => {
-		const hand = game.objectsInZone({ "Hand": player.entity });
-		const library = game.objectsInZone({ "Library": player.entity });
-		const top = index === 0;
+  const priority = getPriority(game)
+  const battlefield = game.objectsInZone("Battlefield")
+  const stack = game.objectsInZone("Stack")
+  const players = game.players().map((player, index) => {
+    const hand = game.objectsInZone({ Hand: player.entity })
+    const library = game.objectsInZone({ Library: player.entity })
+    const top = index === 0
 
-		const playCard = object => {
-			if (object.types.includes("Land")) {
-				doAction(player.entity, {
-					type: "PlayLand",
-					card: object.entity,
-				});
-			} else {
-				console.warn("Can't play this object yet:", object);
-			}
-		};
+    const playCard = (object) => {
+      if (object.types.includes("Land")) {
+        doAction(player.entity, {
+          type: "PlayLand",
+          card: object.entity,
+        })
+      } else {
+        console.warn("Can't play this object yet:", object)
+      }
+    }
 
-		const handCards = hand.map(object => {
-			const id = object.card ? object.card.id : null;
+    const handCards = hand.map((object) => {
+      const id = object.card ? object.card.id : null
 
-			return (
-				<Card key={object.entity} id={id} onClick={() => playCard(object)} />
-			);
-		});
+      return (
+        <Card key={object.entity} id={id} onClick={() => playCard(object)} />
+      )
+    })
 
-		const creatureCards = battlefield
-			.filter(object => object.controller === player.entity && !object.types.includes("Land"))
-			.map(object => {
-				let tapped = false;
-				if (object.permanent != null && object.permanent.tapped) {
-					tapped = true;
-				}
+    const creatureCards = battlefield
+      .filter(
+        (object) =>
+          object.controller === player.entity && !object.types.includes("Land")
+      )
+      .map((object) => {
+        let tapped = false
+        if (object.permanent != null && object.permanent.tapped) {
+          tapped = true
+        }
 
-				const id = object.card ? object.card.id : null;
+        const id = object.card ? object.card.id : null
 
-				return (
-					<Card key={object.entity} id={id} />
-				);
-			});
+        return <Card key={object.entity} id={id} />
+      })
 
-		const manaCards = battlefield
-			.filter(object => object.controller === player.entity && object.types.includes("Land"))
-			.map(object => {
-				let tapped = false;
-				if (object.permanent != null && object.permanent.tapped) {
-					tapped = true;
-				}
+    const manaCards = battlefield
+      .filter(
+        (object) =>
+          object.controller === player.entity && object.types.includes("Land")
+      )
+      .map((object) => {
+        let tapped = false
+        if (object.permanent != null && object.permanent.tapped) {
+          tapped = true
+        }
 
-				const id = object.card ? object.card.id : null;
+        const id = object.card ? object.card.id : null
 
-				return (
-					<Card key={object.entity} id={id} />
-				);
-			});
+        return <Card key={object.entity} id={id} />
+      })
 
-		const stackCards = stack
-			.map(object => {
-				const id = object.card ? object.card.id : null;
+    const stackCards = stack.map((object) => {
+      const id = object.card ? object.card.id : null
 
-				return (
-					<Card key={object.entity} id={id} />
-				);
-			});
+      return <Card key={object.entity} id={id} />
+    })
 
-		return (
-			<Player>
-				<PlayerPanel
-					player={player.entity}
-					name={player.name}
-					priority={priority === player.entity}
-					lifeTotal={player.life}
-					libraryCount={library.length}
-					profilePicture={profilePictures[index]} />
+    return (
+      <Player>
+        <PlayerPanel
+          player={player.entity}
+          name={player.name}
+          priority={priority === player.entity}
+          lifeTotal={player.life}
+          libraryCount={library.length}
+          manaPool={player.manaPool}
+          profilePicture={profilePictures[index]}
+        />
 
-				<MainPlayfield top={top}>
-					<BattlefieldRow>{creatureCards}</BattlefieldRow>
-					<BattlefieldRow>{manaCards}</BattlefieldRow>
-					<Hand>{handCards}</Hand>
-				</MainPlayfield>
-			</Player>
-		);
-	});
+        <MainPlayfield top={top}>
+          <BattlefieldRow>{creatureCards}</BattlefieldRow>
+          <BattlefieldRow>{manaCards}</BattlefieldRow>
+          <Hand>{handCards}</Hand>
+        </MainPlayfield>
+      </Player>
+    )
+  })
 
-	return (
-		<GameContainer>
-			{players[0]}
-			<Steps currentStep={game.step()} />
-			{players[1]}
-		</GameContainer>
-	);
+  return (
+    <GameContainer>
+      {players[0]}
+      <Steps currentStep={game.step()} />
+      {players[1]}
+    </GameContainer>
+  )
 }
 
 function App({ game }) {
-	return (
-		<GameRoot game={game}>
-			<Main />
-		</GameRoot>
-	);
+  return (
+    <GameRoot game={game}>
+      <Main />
+    </GameRoot>
+  )
 }
 
 async function main() {
-	console.log("Loading WebAssembly...");
-	await init();
-	console.log("WebAssembly loaded!");
+  console.log("Loading WebAssembly...")
+  await init()
+  console.log("WebAssembly loaded!")
 
-	engineInit();
+  engineInit()
 
-	let game = new Game();
-	console.log("Players:", game.players());
-	console.log("State:", game.state());
+  let game = new Game()
+  console.log("Players:", game.players())
+  console.log("State:", game.state())
 
-	const root = document.getElementById("app");
-	render(<App game={game} />, root);
+  const root = document.getElementById("app")
+  render(<App game={game} />, root)
 }
 
-main();
+main()

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::mana_pool::ManaPool;
+use crate::cost::ManaColor;
+use crate::mana_pool::{Mana, ManaPool};
 
 /// A component that indicates that this entity is a player.
 #[derive(Debug, Serialize, Deserialize)]
@@ -14,12 +15,23 @@ pub struct Player {
 
 impl Player {
     pub fn new(name: String) -> Self {
+        let mut mana_pool = ManaPool::new();
+        mana_pool.add(Mana {
+            color: ManaColor::Green,
+        });
+        mana_pool.add(Mana {
+            color: ManaColor::Red,
+        });
+        mana_pool.add(Mana {
+            color: ManaColor::Green,
+        });
+
         Self {
             name,
             has_lost: false,
             lands_played_this_turn: 0,
             life: 20,
-            mana_pool: ManaPool::new(),
+            mana_pool,
         }
     }
 }

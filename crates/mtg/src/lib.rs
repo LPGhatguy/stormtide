@@ -6,6 +6,7 @@ use mtg_engine::{
     game::Game,
     hecs::Entity,
     ident::Ident,
+    mana_pool::ManaPool,
     object_db::{CardId, ObjectDb},
     pt::PtCharacteristic,
     types::{CardSubtype, CardSupertype, CardType},
@@ -63,6 +64,8 @@ impl JsGame {
                     entity,
                     name: player.name.to_owned(),
                     life: player.life as i32,
+                    lands_played_this_turn: player.lands_played_this_turn,
+                    mana_pool: player.mana_pool.clone(),
                 })
             })
             .collect::<Vec<_>>();
@@ -135,10 +138,13 @@ impl JsObjectDb {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JsPlayer {
     pub entity: Entity,
     pub name: String,
     pub life: i32,
+    pub lands_played_this_turn: u32,
+    pub mana_pool: ManaPool,
 }
 
 #[derive(Serialize, Deserialize)]

@@ -6,7 +6,8 @@ use crate::cost::ManaColor;
 #[serde(transparent)]
 pub struct ManaId(u32);
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct ManaPool {
     manas: Vec<Mana>,
 }
@@ -26,6 +27,10 @@ impl ManaPool {
 
     pub fn is_empty(&self) -> bool {
         self.manas.is_empty()
+    }
+
+    pub fn add(&mut self, mana: Mana) {
+        self.manas.push(mana);
     }
 
     pub fn spend(&mut self, manas: &[ManaId]) {
