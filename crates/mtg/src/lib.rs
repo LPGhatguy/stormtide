@@ -2,7 +2,7 @@ mod ffi;
 
 use mtg_engine::{
     action::PlayerAction,
-    components::{Card, Object, Permanent, Player},
+    components::{Card, IncompleteSpell, Object, Permanent, Player},
     game::Game,
     hecs::Entity,
     ident::Ident,
@@ -97,6 +97,7 @@ impl JsGame {
 
                     card: entity_ref.get::<Card>().as_deref().cloned(),
                     permanent: entity_ref.get::<Permanent>().as_deref().cloned(),
+                    incomplete_spell: entity_ref.get::<IncompleteSpell>().as_deref().cloned(),
                 };
 
                 Some(js_object)
@@ -148,6 +149,7 @@ pub struct JsPlayer {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct JsObject {
     pub entity: Entity,
 
@@ -162,6 +164,7 @@ pub struct JsObject {
 
     pub card: Option<Card>,
     pub permanent: Option<Permanent>,
+    pub incomplete_spell: Option<IncompleteSpell>,
 }
 
 pub fn sample_game() -> Game {

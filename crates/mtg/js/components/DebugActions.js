@@ -55,6 +55,29 @@ export default function DebugActions({ player }) {
           </DebugButton>
         )
         break
+
+      case "SpellManaAbilities":
+        const spell = game
+          .objectsInZone("Stack")
+          .find(
+            (object) =>
+              object.controller === player && object.incompleteSpell != null
+          )
+
+        if (spell != null) {
+          const finishCasting = () =>
+            doAction(player, {
+              type: "FinishCastingSpell",
+              spell: spell.entity,
+            })
+
+          actions.push(
+            <DebugButton key="finish-casting" onClick={finishCasting}>
+              Finish Casting
+            </DebugButton>
+          )
+        }
+        break
     }
   }
 

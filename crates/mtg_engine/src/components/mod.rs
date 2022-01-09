@@ -45,7 +45,7 @@ pub struct Card {
     pub id: CardId,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IncompleteSpell {
     pub previous_zone: ZoneId,
     pub total_cost: ManaCost,

@@ -7,6 +7,8 @@ import Steps from "./components/Steps"
 import GameRoot, { GameContext } from "./components/GameRoot"
 import Card from "./components/Card"
 import PlayerPanel from "./components/PlayerPanel"
+import StackWindow from "./components/StackWindow"
+import StateBanner from "./components/StateBanner"
 
 import card_back from "../assets/card-back.png"
 import player1 from "../assets/player1.png"
@@ -64,7 +66,6 @@ function Main() {
 
   const priority = getPriority(game)
   const battlefield = game.objectsInZone("Battlefield")
-  const stack = game.objectsInZone("Stack")
   const players = game.players().map((player, index) => {
     const hand = game.objectsInZone({ Hand: player.entity })
     const library = game.objectsInZone({ Library: player.entity })
@@ -75,6 +76,11 @@ function Main() {
         doAction(player.entity, {
           type: "PlayLand",
           card: object.entity,
+        })
+      } else if (object.types.includes("Creature")) {
+        doAction(player.entity, {
+          type: "StartCastingSpell",
+          spell: object.entity,
         })
       } else {
         console.warn("Can't play this object yet:", object)
@@ -102,7 +108,7 @@ function Main() {
 
         const id = object.card ? object.card.id : null
 
-        return <Card key={object.entity} id={id} />
+        return <Card key={object.entity} canTap={true} id={id} />
       })
 
     const manaCards = battlefield
@@ -118,24 +124,15 @@ function Main() {
 
         const id = object.card ? object.card.id : null
 
-        return <Card key={object.entity} id={id} />
+        return <Card key={object.entity} canTap={true} id={id} />
       })
-
-    const stackCards = stack.map((object) => {
-      const id = object.card ? object.card.id : null
-
-      return <Card key={object.entity} id={id} />
-    })
 
     return (
       <Player>
         <PlayerPanel
-          player={player.entity}
-          name={player.name}
+          player={player}
           priority={priority === player.entity}
-          lifeTotal={player.life}
           libraryCount={library.length}
-          manaPool={player.manaPool}
           profilePicture={profilePictures[index]}
         />
 
@@ -148,11 +145,15 @@ function Main() {
     )
   })
 
+  const stack = game.objectsInZone("Stack")
+
   return (
     <GameContainer>
+      <StateBanner />
       {players[0]}
       <Steps currentStep={game.step()} />
       {players[1]}
+      <StackWindow objects={stack} />
     </GameContainer>
   )
 }

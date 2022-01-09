@@ -1,5 +1,7 @@
 //! 601. Casting Spells
 
+use std::collections::HashSet;
+
 use hecs::Entity;
 
 use crate::action::PlayerActionCategory;
@@ -144,6 +146,10 @@ pub fn pay_spell_mana(game: &mut Game, player: Entity, spell: Entity, mana_id: M
             .get(mana_id)
             .ok_or("mana ID was invalid")?;
 
+        if incomplete.mana_paid.contains(&mana_id) {
+            return Err("mana was already spent");
+        }
+
         // TODO: Handle X mana
         let amount_paid_so_far = incomplete.mana_paid.len();
         let next_mana = incomplete
@@ -152,9 +158,11 @@ pub fn pay_spell_mana(game: &mut Game, player: Entity, spell: Entity, mana_id: M
             .get(amount_paid_so_far)
             .ok_or("no more mana needs to be paid")?;
 
-        if next_mana.can_be_paid_with(&mana) {
-            incomplete.mana_paid.push(mana_id);
+        if !next_mana.can_be_paid_with(&mana) {
+            return Err("mana cost cannot be paid with that mana");
         }
+
+        incomplete.mana_paid.push(mana_id);
 
         Ok::<(), &str>(())
     };
@@ -171,7 +179,7 @@ pub fn pay_spell_mana(game: &mut Game, player: Entity, spell: Entity, mana_id: M
 }
 
 pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
-    let mut inner = || {
+    let mut inner = || -> Result<(), String> {
         let mut player_data = game
             .world
             .get_mut::<Player>(player)
@@ -188,7 +196,34 @@ pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
             .map_err(|_| "spell is not an IncompleteSpell")?;
 
         if spell_object.controller != Some(player) {
-            return Err("spell is not controlled by player");
+            return Err("spell is not controlled by player".to_owned());
+        }
+
+        let mut mana_spent = HashSet::new();
+
+        for (i, cost) in spell_incomplete.total_cost.items.iter().enumerate() {
+            let mana_id = spell_incomplete
+                .mana_paid
+                .get(i)
+                .ok_or_else(|| format!("Mana cost {} ({:?}) is not yet paid", i, cost))?;
+
+            if mana_spent.contains(mana_id) {
+                return Err(format!("Mana {:?} was already spent", mana_id));
+            }
+
+            mana_spent.insert(*mana_id);
+
+            let mana = player_data
+                .mana_pool
+                .get(*mana_id)
+                .ok_or_else(|| format!("Mana {:?} was not valid", mana_id))?;
+
+            if !cost.can_be_paid_with(&mana) {
+                return Err(format!(
+                    "Mana {} ({:?}) cannot be paid with {:?}",
+                    i, cost, mana
+                ));
+            }
         }
 
         // 601.2h The player pays the total cost. First, they pay all costs
@@ -208,7 +243,7 @@ pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
         // TODO: Spell modifications, triggers
         game.state = GameState::priority(player);
 
-        Ok::<(), &str>(())
+        Ok::<(), String>(())
     };
 
     if let Err(err) = inner() {

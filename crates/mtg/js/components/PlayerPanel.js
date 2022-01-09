@@ -1,7 +1,9 @@
 import styled from "styled-components"
+import { useContext } from "react"
 
 import DebugActions from "./DebugActions"
 import ManaPool from "./ManaPool"
+import { GameContext } from "./GameRoot"
 
 import card_back from "../../assets/card-back.png"
 
@@ -61,25 +63,42 @@ const Library = styled.div`
 
 export default function PlayerPanel({
   player,
-  name,
   priority,
-  lifeTotal,
   libraryCount,
-  manaPool,
   profilePicture,
 }) {
+  const { game, doAction } = useContext(GameContext)
+  const clickMana = (i) => {
+    const incompleteSpell = game
+      .objectsInZone("Stack")
+      .find(
+        (object) =>
+          object.controller === player.entity && object.incompleteSpell != null
+      )
+
+    if (incompleteSpell == null) {
+      return
+    }
+
+    doAction(player.entity, {
+      type: "PayIncompleteSpellMana",
+      spell: incompleteSpell.entity,
+      mana: i,
+    })
+  }
+
   return (
     <SidePanel priority={priority}>
       <Identity>
         <Portrait>
           <img src={profilePicture} />
         </Portrait>
-        <Name>{name}</Name>
+        <Name>{player.name}</Name>
       </Identity>
-      <LifeTotal>{lifeTotal}</LifeTotal>
+      <LifeTotal>{player.lifeTotal}</LifeTotal>
       <Library>{libraryCount}</Library>
-      <ManaPool pool={manaPool} />
-      <DebugActions player={player} />
+      <ManaPool pool={player.manaPool} onClick={clickMana} />
+      <DebugActions player={player.entity} />
     </SidePanel>
   )
 }

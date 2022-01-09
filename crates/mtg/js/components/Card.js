@@ -25,9 +25,10 @@ const transforms = (props) => {
 
 const StyledCard = styled.div`
   flex: 0 1 4rem;
-  aspect-ratio: 1;
   transition: transform 200ms ease-in-out;
   text-align: center;
+
+  aspect-ratio: ${(props) => (props.canTap ? "1" : "5 / 7")};
 
   ${transforms}
 
@@ -43,7 +44,7 @@ const StyledCard = styled.div`
   }
 `
 
-export default function Card({ id, onClick }) {
+export default function Card({ id, canTap, onClick }) {
   const { objectDb } = useContext(GameContext)
   const card = objectDb.card(id)
 
@@ -53,7 +54,7 @@ export default function Card({ id, onClick }) {
   }
 
   return (
-    <StyledCard>
+    <StyledCard canTap={canTap}>
       <img role="button" onClick={onClick} src={image} />
     </StyledCard>
   )
