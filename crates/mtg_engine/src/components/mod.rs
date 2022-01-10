@@ -9,6 +9,7 @@ use crate::cost::ManaCost;
 use crate::counters::Counter;
 use crate::mana_pool::ManaId;
 use crate::object_db::CardId;
+use crate::target::Target;
 use crate::zone::ZoneId;
 
 mod object;
@@ -47,7 +48,7 @@ pub struct IncompleteSpell {
     pub previous_zone: ZoneId,
     pub total_cost: ManaCost,
     pub mana_paid: Vec<ManaId>,
-    pub targets: Vec<Entity>,
+    pub targets: Vec<Target>,
 }
 
 impl IncompleteSpell {

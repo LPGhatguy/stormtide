@@ -11,6 +11,7 @@ pub mod object_db;
 pub mod player;
 pub mod pt;
 pub mod queries;
+pub mod target;
 pub mod types;
 pub mod zone;
 
