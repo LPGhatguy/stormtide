@@ -20,7 +20,7 @@ pub fn enter_begin_combat(game: &mut Game) {
 
     // 507.2. Second, the active player gets priority. (See rule
     //        117, “Timing and Priority.”)
-    game.state = GameState::priority(game.active_player);
+    game.give_priority(game.active_player);
 }
 
 /// 508. Declare Attackers Step
@@ -127,7 +127,7 @@ pub fn enter_combat_damage(game: &mut Game) {
     //        priority; the order in which they triggered doesn’t
     //        matter. (See rule 603, “Handling Triggered
     //        Abilities.”)
-    game.state = GameState::priority(game.active_player);
+    game.give_priority(game.active_player);
 }
 
 // 511. End of Combat Step
@@ -135,7 +135,7 @@ pub fn enter_end_combat(game: &mut Game) {
     // 511.1. The end of combat step has no turn-based actions. Once
     //        it begins, the active player gets priority. (See rule
     //        117, “Timing and Priority.”)
-    game.state = GameState::priority(game.active_player);
+    game.give_priority(game.active_player);
 
     // 511.2. Abilities that trigger “at end of combat” trigger as
     //        the end of combat step begins. Effects that last
@@ -305,7 +305,7 @@ pub fn choose_attackers(game: &mut Game, player: Entity, attackers: &[Entity]) {
 
     // 508.2. Second, the active player gets priority. (See rule 117,
     //        “Timing and Priority.”)
-    game.state = GameState::priority(game.active_player);
+    game.give_priority(game.active_player);
 }
 
 fn blockers_valid(_game: &Game, _player: Entity, _blockers: &[Entity]) -> Result<(), String> {
@@ -330,5 +330,5 @@ pub fn choose_blockers(game: &mut Game, player: Entity, blockers: &[Entity]) {
 
     // TODO
 
-    game.state = GameState::priority(game.active_player);
+    game.give_priority(game.active_player);
 }

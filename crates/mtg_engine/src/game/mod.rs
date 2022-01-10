@@ -80,15 +80,6 @@ pub enum GameState {
     Complete(GameOutcome),
 }
 
-impl GameState {
-    pub fn priority(player: Entity) -> Self {
-        Self::Player {
-            player,
-            action: PlayerActionCategory::Priority,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum GameOutcome {
@@ -127,7 +118,10 @@ impl Game {
             players_that_have_passed: HashSet::new(),
             active_player: player1,
             step: Step::Upkeep,
-            state: GameState::priority(player1),
+            state: GameState::Player {
+                player: player1,
+                action: PlayerActionCategory::Priority,
+            },
             zones,
             _pending_triggers: (),
         }
@@ -299,6 +293,29 @@ impl Game {
         &self.state
     }
 
+    /// Check state-based actions and then give a player priority as long as the
+    /// game hasn't ended as a result.
+    pub fn give_priority(&mut self, player: Entity) {
+        self.apply_state_based_actions();
+
+        if matches!(self.state, GameState::Complete(_)) {
+            return;
+        }
+
+        self.state = GameState::Player {
+            player,
+            action: PlayerActionCategory::Priority,
+        };
+    }
+
+    /// Give a player priority and reset the state tracking who has passed. This
+    /// should be used to give players priority after a player takes an action
+    /// so that all players correctly get priority.
+    pub fn start_priority_round(&mut self, player: Entity) {
+        self.players_that_have_passed.clear();
+        self.give_priority(player);
+    }
+
     pub fn priority_player(&self) -> Option<Entity> {
         match &self.state {
             GameState::Player { player, action } if action == &PlayerActionCategory::Priority => {
@@ -403,8 +420,7 @@ impl Game {
                 self.resolve_one_from_stack();
             }
         } else {
-            self.apply_state_based_actions();
-            self.state = GameState::priority(next_player);
+            self.give_priority(next_player);
         }
     }
 
@@ -486,7 +502,7 @@ impl Game {
                 // 503.1. The upkeep step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::priority(self.active_player);
+                self.start_priority_round(self.active_player);
 
                 // 503.1a Any abilities that triggered during the untap step and
                 //        any abilities that triggered at the beginning of the
@@ -507,7 +523,7 @@ impl Game {
 
                 // 504.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::priority(self.active_player);
+                self.start_priority_round(self.active_player);
             }
 
             // 505. Main Phase
@@ -522,7 +538,7 @@ impl Game {
 
                 // 505.5. Third, the active player gets priority. (See rule 117,
                 //        “Timing and Priority.”)
-                self.state = GameState::priority(self.active_player);
+                self.start_priority_round(self.active_player);
             }
 
             Step::BeginCombat => combat::enter_begin_combat(self),
@@ -536,7 +552,7 @@ impl Game {
                 // 513.1. The end step has no turn-based actions. Once it
                 //        begins, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
-                self.state = GameState::priority(self.active_player);
+                self.start_priority_round(self.active_player);
             }
 
             // 514. Cleanup Step
@@ -586,6 +602,7 @@ impl Game {
                 //        abilities. Once the stack is empty and all players
                 //        pass in succession, another cleanup step begins.
                 self.apply_state_based_actions();
+
                 // TODO: Put stuff onto the stack, give priority if there was
                 // anything.
 
@@ -629,6 +646,8 @@ impl Game {
             drop(object);
             self.move_object_to_zone(top, ZoneId::Graveyard(owner));
         }
+
+        self.start_priority_round(self.active_player);
     }
 
     /// Marks the given player as having lost.

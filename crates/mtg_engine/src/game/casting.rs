@@ -11,7 +11,7 @@ use crate::mana_pool::ManaId;
 use crate::types::CardType;
 use crate::zone::ZoneId;
 
-use super::Game;
+use super::{Game, Step};
 
 /// 601.2. To cast a spell is to take it from where it is (usually the
 ///        hand), put it on the stack, and pay its costs, so that it will
@@ -48,6 +48,10 @@ pub fn start_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
             if !spell_object.types.contains(&CardType::Instant) {
                 if !game.zone(ZoneId::Stack).unwrap().is_empty() {
                     return Err("stack is not empty");
+                }
+
+                if game.step != Step::Main1 && game.step != Step::Main2 {
+                    return Err("it is not a main phase");
                 }
             }
 
@@ -244,7 +248,7 @@ pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
         //
         // TODO: Spell modifications, triggers
         game.world.remove_one::<IncompleteSpell>(spell).unwrap();
-        game.state = GameState::priority(player);
+        game.start_priority_round(player);
 
         Ok::<(), String>(())
     };
@@ -285,7 +289,7 @@ pub fn cancel_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
     };
 
     if let Err(err) = inner() {
-        log::error!(
+        log::info!(
             "Player {:?} cannot cancel casting spell {:?}: {}",
             player,
             spell,
