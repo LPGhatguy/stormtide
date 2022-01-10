@@ -73,14 +73,14 @@ export default function PlayerPanel({
       .objectsInZone("Stack")
       .find(
         (object) =>
-          object.controller === player.entity && object.incompleteSpell != null
+          object.controller === player.id && object.incompleteSpell != null
       )
 
     if (incompleteSpell == null) {
       return
     }
 
-    doAction(player.entity, {
+    doAction(player.id, {
       type: "PayIncompleteSpellMana",
       spell: incompleteSpell.entity,
       mana: i,
@@ -98,7 +98,7 @@ export default function PlayerPanel({
       <LifeTotal>{player.lifeTotal}</LifeTotal>
       <Library>{libraryCount}</Library>
       <ManaPool pool={player.manaPool} onClick={clickMana} />
-      <DebugActions player={player.entity} />
+      <DebugActions player={player.id} />
     </SidePanel>
   )
 }

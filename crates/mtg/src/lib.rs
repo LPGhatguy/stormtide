@@ -2,12 +2,13 @@ mod ffi;
 
 use mtg_engine::{
     action::PlayerAction,
-    components::{Card, IncompleteSpell, Object, Permanent, Player},
+    components::{Card, IncompleteSpell, Object, Permanent},
     game::Game,
     hecs::Entity,
     ident::Ident,
     mana_pool::ManaPool,
     object_db::{CardId, ObjectDb},
+    player::PlayerId,
     pt::PtCharacteristic,
     types::{CardSubtype, CardSupertype, CardType},
     zone::ZoneId,
@@ -44,7 +45,7 @@ impl JsGame {
 
     #[wasm_bindgen(js_name = "doAction")]
     pub fn do_action(&mut self, player: JsValue, action: JsValue) -> Result<(), JsValue> {
-        let player: Entity = ffi::from_js(player)?;
+        let player: PlayerId = ffi::from_js(player)?;
         let action: PlayerAction = ffi::from_js(action)?;
 
         self.inner.do_action(player, action);
@@ -55,13 +56,10 @@ impl JsGame {
         let players = self
             .inner
             .players()
-            .to_vec()
-            .into_iter()
-            .filter_map(|entity| {
-                let player = self.inner.world().get::<Player>(entity).ok()?;
-
+            .iter()
+            .filter_map(|player| {
                 Some(JsPlayer {
-                    entity,
+                    id: player.id,
                     name: player.name.to_owned(),
                     life: player.life as i32,
                     lands_played_this_turn: player.lands_played_this_turn,
@@ -141,7 +139,7 @@ impl JsObjectDb {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JsPlayer {
-    pub entity: Entity,
+    pub id: PlayerId,
     pub name: String,
     pub life: i32,
     pub lands_played_this_turn: u32,
@@ -159,8 +157,8 @@ pub struct JsObject {
     pub subtypes: Vec<CardSubtype>,
     pub pt: Option<PtCharacteristic>,
     pub zone: ZoneId,
-    pub owner: Entity,
-    pub controller: Option<Entity>,
+    pub owner: PlayerId,
+    pub controller: Option<PlayerId>,
 
     pub card: Option<Card>,
     pub permanent: Option<Permanent>,
@@ -173,7 +171,7 @@ pub fn sample_game() -> Game {
     let forest = game.object_db().card_id("Forest").unwrap();
     let bear = game.object_db().card_id("Grizzly Bears").unwrap();
 
-    let players = game.players().to_vec();
+    let players: Vec<_> = game.players().iter().map(|player| player.id).collect();
 
     for player in players {
         // each player gets a nice 40 card deck

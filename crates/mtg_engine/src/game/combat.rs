@@ -1,8 +1,10 @@
 use hecs::Entity;
 
+use crate::action::PlayerActionCategory;
+use crate::components::Object;
 use crate::{
-    action::PlayerActionCategory,
-    components::{Creature, Object, Permanent},
+    components::{Creature, Permanent},
+    player::PlayerId,
 };
 
 use super::{Game, GameState};
@@ -44,11 +46,7 @@ pub fn enter_declare_attackers(game: &mut Game) {
 pub fn enter_declare_blockers(game: &mut Game) {
     // TODO: Choose player who is defender instead of just "not the
     // active player"
-    let nap = *game
-        .turn_order
-        .iter()
-        .find(|p| **p != game.active_player)
-        .unwrap();
+    let nap = game.players.player_after(game.active_player);
 
     // 509.1. First, the defending player declares blockers. This
     //        turn-based action doesn’t use the stack. To declare
@@ -152,7 +150,7 @@ pub fn enter_end_combat(game: &mut Game) {
     // TODO
 }
 
-fn attackers_valid(game: &Game, player: Entity, attackers: &[Entity]) -> Result<(), String> {
+fn attackers_valid(game: &Game, player: PlayerId, attackers: &[Entity]) -> Result<(), String> {
     // 508. Declare Attackers Step
 
     // 508.1a The active player chooses which creatures that they control,
@@ -234,7 +232,7 @@ fn attackers_valid(game: &Game, player: Entity, attackers: &[Entity]) -> Result<
     Ok(())
 }
 
-pub fn choose_attackers(game: &mut Game, player: Entity, attackers: &[Entity]) {
+pub fn choose_attackers(game: &mut Game, player: PlayerId, attackers: &[Entity]) {
     let required_state = GameState::Player {
         player,
         action: PlayerActionCategory::ChooseAttackers,
@@ -308,11 +306,11 @@ pub fn choose_attackers(game: &mut Game, player: Entity, attackers: &[Entity]) {
     game.give_priority(game.active_player);
 }
 
-fn blockers_valid(_game: &Game, _player: Entity, _blockers: &[Entity]) -> Result<(), String> {
+fn blockers_valid(_game: &Game, _player: PlayerId, _blockers: &[Entity]) -> Result<(), String> {
     Ok(())
 }
 
-pub fn choose_blockers(game: &mut Game, player: Entity, blockers: &[Entity]) {
+pub fn choose_blockers(game: &mut Game, player: PlayerId, blockers: &[Entity]) {
     let required_state = GameState::Player {
         player,
         action: PlayerActionCategory::ChooseBlockers,

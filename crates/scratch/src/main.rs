@@ -13,8 +13,7 @@ fn main() {
     let forest = game.object_db().card_id("Forest").unwrap();
     let bear = game.object_db().card_id("Grizzly Bears").unwrap();
 
-    let player1 = game.players()[0];
-    let _player2 = game.players()[1];
+    let player1 = game.players().iter().next().unwrap().id;
 
     let _forest1 = game
         .create_card(forest, ZoneId::Battlefield, player1)

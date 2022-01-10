@@ -8,6 +8,7 @@ pub mod ident;
 pub mod keyword_ability;
 pub mod mana_pool;
 pub mod object_db;
+pub mod player;
 pub mod pt;
 pub mod queries;
 pub mod types;
@@ -28,7 +29,7 @@ mod test {
         let mut game = Game::new();
         let grizzly_bears = game.object_db().card_id("Grizzly Bears").unwrap();
 
-        let player1 = game.players()[0];
+        let player1 = game.players().iter().next().unwrap().id;
         let bear = game
             .create_card(grizzly_bears, ZoneId::Battlefield, player1)
             .unwrap();

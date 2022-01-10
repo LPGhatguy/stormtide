@@ -11,9 +11,10 @@ use std::fmt::{self, Debug};
 use hecs::{Entity, EntityBuilder, World};
 use serde::{Deserialize, Serialize};
 
+use crate::player::{PlayerId, Players};
 use crate::{
     action::{PlayerAction, PlayerActionCategory},
-    components::{Card, Creature, Damage, Object, Permanent, Player, UntilEotEffect},
+    components::{Card, Creature, Damage, Object, Permanent, UntilEotEffect},
     object_db::{CardId, ObjectDb},
     queries::Query,
     types::CardType,
@@ -31,8 +32,7 @@ pub struct Game {
     /// The next timestamp that will be assigned to an entity.
     next_timestamp: u64,
 
-    /// The turn order and list of player entities in the game.
-    turn_order: Vec<Entity>,
+    players: Players,
 
     /// The current turn. Starts at 0 before the first untap step, then proceeds
     /// at the end of each round of turns.
@@ -42,11 +42,11 @@ pub struct Game {
     /// chance to take an action and have already passed priority.
     ///
     /// When all players have passed priority, the step and/or turn advances.
-    players_that_have_passed: HashSet<Entity>,
+    players_that_have_passed: HashSet<PlayerId>,
 
     /// The Active Player (AP) is the player whose turn it is. All other players
     /// are Non-Active Players (NAP).
-    active_player: Entity,
+    active_player: PlayerId,
 
     /// The current step in the game.
     step: Step,
@@ -72,7 +72,7 @@ pub enum GameState {
     /// player having priority, to choosing a spell's target or how to pay a
     /// cost.
     Player {
-        player: Entity,
+        player: PlayerId,
         action: PlayerActionCategory,
     },
 
@@ -83,18 +83,15 @@ pub enum GameState {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum GameOutcome {
-    Win { winner: Entity },
+    Win { winner: PlayerId },
 }
 
 impl Game {
     pub fn new() -> Self {
         let object_db = ObjectDb::load();
-        let mut world = World::new();
+        let world = World::new();
 
-        let player1 = world.spawn((Player::new("Player 1".to_owned()),));
-        let player2 = world.spawn((Player::new("Player 2".to_owned()),));
-
-        let players = vec![player1, player2];
+        let players = Players::new(2);
 
         let mut zones = maplit::hashmap! {
             ZoneId::Stack => Zone::new(),
@@ -103,23 +100,25 @@ impl Game {
             ZoneId::Command => Zone::new(),
         };
 
-        for &player in &players {
-            zones.insert(ZoneId::Library(player), Zone::new());
-            zones.insert(ZoneId::Hand(player), Zone::new());
-            zones.insert(ZoneId::Graveyard(player), Zone::new());
+        for player in &players {
+            zones.insert(ZoneId::Library(player.id), Zone::new());
+            zones.insert(ZoneId::Hand(player.id), Zone::new());
+            zones.insert(ZoneId::Graveyard(player.id), Zone::new());
         }
+
+        let player1_id = players.iter().next().unwrap().id;
 
         Self {
             object_db,
             world,
             next_timestamp: 0,
-            turn_order: players,
+            players,
             turn_number: 1,
             players_that_have_passed: HashSet::new(),
-            active_player: player1,
+            active_player: player1_id,
             step: Step::Upkeep,
             state: GameState::Player {
-                player: player1,
+                player: player1_id,
                 action: PlayerActionCategory::Priority,
             },
             zones,
@@ -140,7 +139,7 @@ impl Game {
         }
     }
 
-    pub fn create_card(&mut self, id: CardId, zone_id: ZoneId, owner: Entity) -> Option<Entity> {
+    pub fn create_card(&mut self, id: CardId, zone_id: ZoneId, owner: PlayerId) -> Option<Entity> {
         let zone = self.zones.get_mut(&zone_id)?;
         let descriptor = self.object_db.card(id)?;
 
@@ -264,7 +263,7 @@ impl Game {
         query_object.query(&self.world)
     }
 
-    pub fn active_player(&self) -> Entity {
+    pub fn active_player(&self) -> PlayerId {
         self.active_player
     }
 
@@ -281,8 +280,8 @@ impl Game {
     }
 
     /// Returns all players in turn order.
-    pub fn players(&self) -> &[Entity] {
-        &self.turn_order
+    pub fn players(&self) -> &Players {
+        &self.players
     }
 
     pub fn step(&self) -> Step {
@@ -295,7 +294,7 @@ impl Game {
 
     /// Check state-based actions and then give a player priority as long as the
     /// game hasn't ended as a result.
-    pub fn give_priority(&mut self, player: Entity) {
+    pub fn give_priority(&mut self, player: PlayerId) {
         self.apply_state_based_actions();
 
         if matches!(self.state, GameState::Complete(_)) {
@@ -311,12 +310,12 @@ impl Game {
     /// Give a player priority and reset the state tracking who has passed. This
     /// should be used to give players priority after a player takes an action
     /// so that all players correctly get priority.
-    pub fn start_priority_round(&mut self, player: Entity) {
+    pub fn start_priority_round(&mut self, player: PlayerId) {
         self.players_that_have_passed.clear();
         self.give_priority(player);
     }
 
-    pub fn priority_player(&self) -> Option<Entity> {
+    pub fn priority_player(&self) -> Option<PlayerId> {
         match &self.state {
             GameState::Player { player, action } if action == &PlayerActionCategory::Priority => {
                 Some(*player)
@@ -325,7 +324,7 @@ impl Game {
         }
     }
 
-    pub fn do_action(&mut self, player: Entity, action: PlayerAction) {
+    pub fn do_action(&mut self, player: PlayerId, action: PlayerAction) {
         log::debug!("Player {:?} attempting action {:?}", player, action);
 
         match action {
@@ -387,7 +386,7 @@ impl Game {
         }
     }
 
-    fn pass_priority(&mut self, player: Entity) {
+    fn pass_priority(&mut self, player: PlayerId) {
         if self.priority_player() != Some(player) {
             log::warn!(
                 "Player {:?} tried to pass priority but is not the priority player",
@@ -402,7 +401,7 @@ impl Game {
         //        pass without taking any actions in between passing), the spell
         //        or ability on top of the stack resolves or, if the stack is
         //        empty, the phase or step ends.
-        let next_player = self.player_after(player);
+        let next_player = self.players.player_after(player);
         log::debug!("Player {:?} passing priority to {:?}", player, next_player);
 
         if self.players_that_have_passed.contains(&next_player) {
@@ -445,11 +444,11 @@ impl Game {
         let stack = &self.zones[&ZoneId::Stack];
         assert!(stack.is_empty());
 
-        let next_player = self.player_after(self.active_player);
-        let is_new_turn_cycle = next_player == self.turn_order[0];
+        let next_player = self.players.player_after(self.active_player);
+        let is_new_turn_cycle = next_player.to_u32() == 0;
 
         {
-            for (_, player) in self.world.query_mut::<&mut Player>() {
+            for player in &mut self.players {
                 player.lands_played_this_turn = 0;
             }
         }
@@ -651,27 +650,13 @@ impl Game {
     }
 
     /// Marks the given player as having lost.
-    fn player_loses(&mut self, player: Entity) {
+    fn player_loses(&mut self, player: PlayerId) {
         // TODO: Support >2 players
-        let other_player = self.turn_order.iter().find(|p| **p != player).unwrap();
+        let other_player = self.players.iter().find(|p| p.id != player).unwrap();
 
         self.state = GameState::Complete(GameOutcome::Win {
-            winner: *other_player,
+            winner: other_player.id,
         });
-    }
-
-    /// Returns the next player, in turn order. This is used for priority
-    /// passing, turn order, and various effects.
-    fn player_after(&self, player: Entity) -> Entity {
-        let maybe_index = self.turn_order.iter().position(|&turn| turn == player);
-
-        let index = match maybe_index {
-            Some(index) => index,
-            None => panic!("Game::player_after was called with a non-player Entity."),
-        };
-
-        let next_index = (index + 1) % self.turn_order.len();
-        self.turn_order[next_index]
     }
 
     /// Returns the next step if there are steps to take still in this turn.
@@ -679,7 +664,7 @@ impl Game {
         match self.step {
             Step::Untap => Some(Step::Upkeep),
             Step::Upkeep => {
-                if self.turn_number == 1 && self.active_player == self.players()[0] {
+                if self.turn_number == 1 && self.active_player.to_u32() == 0 {
                     return Some(Step::Main1);
                 }
 
@@ -698,7 +683,7 @@ impl Game {
         }
     }
 
-    fn play_land(&mut self, player: Entity, land: Entity) {
+    fn play_land(&mut self, player: PlayerId, land: Entity) {
         // 116.2a Playing a land is a special action. To play a land, a player
         //        puts that land onto the battlefield from the zone it was in
         //        (usually that player’s hand). By default, a player can take
@@ -707,7 +692,7 @@ impl Game {
         //        empty during a main phase of their turn. See rule 305,
         //        “Lands.”
 
-        fn inner(game: &mut Game, player: Entity, land: Entity) -> Result<(), String> {
+        fn inner(game: &mut Game, player: PlayerId, land: Entity) -> Result<(), String> {
             if game.active_player != player {
                 return Err("it is not their turn".to_owned());
             }
@@ -727,9 +712,9 @@ impl Game {
 
             {
                 let mut player_object = game
-                    .world
-                    .get_mut::<Player>(player)
-                    .map_err(|_| format!("{:?} is not a player", player))?;
+                    .players
+                    .get_mut(player)
+                    .ok_or_else(|| format!("{:?} is not a player", player))?;
 
                 if player_object.lands_played_this_turn > 0 {
                     return Err("they have already played a land this turn".to_owned());

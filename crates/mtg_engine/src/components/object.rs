@@ -1,8 +1,8 @@
-use hecs::Entity;
 use serde::{Deserialize, Serialize};
 
 use crate::cost::ManaCost;
 use crate::ident::Ident;
+use crate::player::PlayerId;
 use crate::pt::PtCharacteristic;
 use crate::types::{CardSubtype, CardSupertype, CardType};
 use crate::zone::ZoneId;
@@ -28,7 +28,7 @@ pub struct Object {
 
     pub zone: ZoneId,
 
-    pub owner: Entity,
+    pub owner: PlayerId,
 
     /// 109.4. Only objects on the stack or on the battlefield have a
     ///        controller. Objects that are neither on the stack nor on the
@@ -60,5 +60,5 @@ pub struct Object {
     ///
     /// 109.4g In a Conspiracy Draft game, each conspiracy card is controlled by
     ///        its owner. See rule 905.5.
-    pub controller: Option<Entity>,
+    pub controller: Option<PlayerId>,
 }

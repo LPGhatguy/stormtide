@@ -5,9 +5,10 @@ use std::collections::HashSet;
 use hecs::Entity;
 
 use crate::action::PlayerActionCategory;
-use crate::components::{IncompleteSpell, Object, Player};
+use crate::components::{IncompleteSpell, Object};
 use crate::game::GameState;
 use crate::mana_pool::ManaId;
+use crate::player::PlayerId;
 use crate::types::CardType;
 use crate::zone::ZoneId;
 
@@ -25,7 +26,7 @@ use super::{Game, Step};
 ///        the spell is illegal ; the game returns to the moment before the
 ///        casting of that spell was proposed (see rule 726, “Handling
 ///        Illegal Actions”).
-pub fn start_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
+pub fn start_casting_spell(game: &mut Game, player: PlayerId, spell: Entity) {
     let mut inner = || {
         // 601.3. A player can begin to cast a spell only if a rule or
         //        effect allows that player to cast it and no rule or effect
@@ -124,12 +125,9 @@ pub fn start_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
     }
 }
 
-pub fn pay_spell_mana(game: &mut Game, player: Entity, spell: Entity, mana_id: ManaId) {
+pub fn pay_spell_mana(game: &mut Game, player: PlayerId, spell: Entity, mana_id: ManaId) {
     let inner = || {
-        let player_data = game
-            .world
-            .get::<Player>(player)
-            .map_err(|_| "player was invalid")?;
+        let player_data = game.players.get(player).ok_or("player was invalid")?;
 
         let spell_object = game
             .world
@@ -182,13 +180,13 @@ pub fn pay_spell_mana(game: &mut Game, player: Entity, spell: Entity, mana_id: M
     }
 }
 
-pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
+pub fn finish_casting_spell(game: &mut Game, player: PlayerId, spell: Entity) {
     let mut inner = || -> Result<(), String> {
         {
-            let mut player_data = game
-                .world
-                .get_mut::<Player>(player)
-                .map_err(|_| "player is not a Player")?;
+            let player_data = game
+                .players
+                .get_mut(player)
+                .ok_or("player is not a Player")?;
 
             let spell_object = game
                 .world
@@ -263,7 +261,7 @@ pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
     }
 }
 
-pub fn cancel_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
+pub fn cancel_casting_spell(game: &mut Game, player: PlayerId, spell: Entity) {
     let mut inner = || {
         let (current_zone, previous_zone) = {
             let spell_entity = game.world.entity(spell).map_err(|_| "spell not found")?;

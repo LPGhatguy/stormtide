@@ -13,10 +13,8 @@ use crate::pt::PtCharacteristic;
 use crate::zone::ZoneId;
 
 mod object;
-mod player;
 
 pub use object::*;
-pub use player::*;
 
 /// A component to indicate that this entity is an effect that should be cleaned
 /// up at the end of the turn.

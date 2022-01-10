@@ -1,4 +1,4 @@
-use crate::components::{AttachedToEntity, Player};
+use crate::components::AttachedToEntity;
 
 use super::Game;
 
@@ -28,16 +28,12 @@ pub fn apply(game: &mut Game) -> bool {
     }
 
     // 704.5a If a player has 0 or less life, that player loses the game.
-    {
-        let mut player_query = game.world.query::<(&mut Player,)>();
-
-        for (_entity, (player,)) in player_query.iter() {
-            if !player.has_lost && player.life <= 0 {
-                // TODO: Check if player is exempt from this SBA, like via
-                // Phyrexian Unlife.
-                player.has_lost = true;
-                actions_performed = true;
-            }
+    for player in &mut game.players {
+        if !player.has_lost && player.life <= 0 {
+            // TODO: Check if player is exempt from this SBA, like via
+            // Phyrexian Unlife.
+            player.has_lost = true;
+            actions_performed = true;
         }
     }
 

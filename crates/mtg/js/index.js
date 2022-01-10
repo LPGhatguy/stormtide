@@ -67,18 +67,18 @@ function Main() {
   const priority = getPriority(game)
   const battlefield = game.objectsInZone("Battlefield")
   const players = game.players().map((player, index) => {
-    const hand = game.objectsInZone({ Hand: player.entity })
-    const library = game.objectsInZone({ Library: player.entity })
+    const hand = game.objectsInZone({ Hand: player.id })
+    const library = game.objectsInZone({ Library: player.id })
     const top = index === 0
 
     const playCard = (object) => {
       if (object.types.includes("Land")) {
-        doAction(player.entity, {
+        doAction(player.id, {
           type: "PlayLand",
           card: object.entity,
         })
       } else if (object.types.includes("Creature")) {
-        doAction(player.entity, {
+        doAction(player.id, {
           type: "StartCastingSpell",
           spell: object.entity,
         })
@@ -98,7 +98,7 @@ function Main() {
     const creatureCards = battlefield
       .filter(
         (object) =>
-          object.controller === player.entity && !object.types.includes("Land")
+          object.controller === player.id && !object.types.includes("Land")
       )
       .map((object) => {
         let tapped = false
@@ -114,7 +114,7 @@ function Main() {
     const manaCards = battlefield
       .filter(
         (object) =>
-          object.controller === player.entity && object.types.includes("Land")
+          object.controller === player.id && object.types.includes("Land")
       )
       .map((object) => {
         let tapped = false
@@ -131,7 +131,7 @@ function Main() {
       <Player>
         <PlayerPanel
           player={player}
-          priority={priority === player.entity}
+          priority={priority === player.id}
           libraryCount={library.length}
           profilePicture={profilePictures[index]}
         />
