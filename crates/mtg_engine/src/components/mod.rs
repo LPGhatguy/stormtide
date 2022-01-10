@@ -9,7 +9,6 @@ use crate::cost::ManaCost;
 use crate::counters::Counter;
 use crate::mana_pool::ManaId;
 use crate::object_db::CardId;
-use crate::pt::PtCharacteristic;
 use crate::zone::ZoneId;
 
 mod object;
@@ -73,11 +72,6 @@ pub struct Permanent {
 }
 
 #[derive(Debug)]
-pub struct Creature {
-    pub pt: PtCharacteristic,
-}
-
-#[derive(Debug)]
 pub struct Counters {
     pub counters: Vec<Counter>,
 }
@@ -86,6 +80,3 @@ pub struct Counters {
 pub struct Damage {
     pub amount: u64,
 }
-
-#[derive(Debug)]
-pub struct Land;

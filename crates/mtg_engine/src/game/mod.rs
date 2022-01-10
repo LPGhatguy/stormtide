@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::player::{PlayerId, Players};
 use crate::{
     action::{PlayerAction, PlayerActionCategory},
-    components::{Card, Creature, Damage, Object, Permanent, UntilEotEffect},
+    components::{Card, Damage, Object, Permanent, UntilEotEffect},
     object_db::{CardId, ObjectDb},
     queries::Query,
     types::CardType,
@@ -165,11 +165,6 @@ impl Game {
             controller,
         });
         builder.add(Card { id });
-
-        if descriptor.types.contains(&CardType::Creature) {
-            let pt = descriptor.pt?;
-            builder.add(Creature { pt });
-        }
 
         // 110.1. A permanent is a card or token on the battlefield. A permanent
         //        remains on the battlefield indefinitely. A card or token

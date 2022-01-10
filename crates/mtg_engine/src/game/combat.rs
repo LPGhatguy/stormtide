@@ -2,10 +2,8 @@ use hecs::Entity;
 
 use crate::action::PlayerActionCategory;
 use crate::components::Object;
-use crate::{
-    components::{Creature, Permanent},
-    player::PlayerId,
-};
+use crate::types::CardType;
+use crate::{components::Permanent, player::PlayerId};
 
 use super::{Game, GameState};
 
@@ -182,7 +180,7 @@ fn attackers_valid(game: &Game, player: PlayerId, attackers: &[Entity]) -> Resul
 
         // FIXME: Use type query instead to figure out whether something is
         // a creature.
-        if !entity.has::<Creature>() {
+        if !object.types.contains(&CardType::Creature) {
             return Err(format!("Entity {:?} is not a creature", attacker));
         }
 

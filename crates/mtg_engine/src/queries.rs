@@ -4,9 +4,10 @@ use std::mem::swap;
 
 use hecs::{Entity, World};
 
-use crate::components::{Counters, Creature, Permanent};
+use crate::components::{Counters, Object, Permanent};
 use crate::counters::Counter;
 use crate::pt::{AdjustPtEffect, PtValue, SetPtEffect, SwitchPtEffect};
+use crate::types::CardType;
 
 /// Trait implemented on types to read information from the game state.
 pub trait Query {
@@ -29,11 +30,11 @@ impl Query for QueryPt {
             return None;
         }
 
-        let creature = entity.get::<Creature>()?;
+        let object = entity.get::<Object>()?;
         let counters = entity.get::<Counters>();
 
         // Layer 7a: characteristic-defining P/T.
-        let mut calculated_pt = creature.pt.resolve();
+        let mut calculated_pt = object.pt?.resolve();
 
         // Layer 7b: any effects that directly set power/toughness.
         //
@@ -96,11 +97,13 @@ impl Query for QueryCreatures {
     type Output = Vec<Entity>;
 
     fn query(&self, world: &World) -> Self::Output {
-        let mut query = world.query::<()>().with::<Creature>().with::<Permanent>();
+        let mut query = world.query::<(&Object,)>().with::<Permanent>();
         let mut output = Vec::new();
 
-        for (entity, ()) in query.into_iter() {
-            output.push(entity);
+        for (entity, (object,)) in query.into_iter() {
+            if object.types.contains(&CardType::Creature) {
+                output.push(entity);
+            }
         }
 
         output
