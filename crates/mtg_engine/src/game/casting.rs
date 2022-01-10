@@ -180,58 +180,60 @@ pub fn pay_spell_mana(game: &mut Game, player: Entity, spell: Entity, mana_id: M
 
 pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
     let mut inner = || -> Result<(), String> {
-        let mut player_data = game
-            .world
-            .get_mut::<Player>(player)
-            .map_err(|_| "player is not a Player")?;
+        {
+            let mut player_data = game
+                .world
+                .get_mut::<Player>(player)
+                .map_err(|_| "player is not a Player")?;
 
-        let spell_object = game
-            .world
-            .get::<Object>(spell)
-            .map_err(|_| "spell is not an Object")?;
+            let spell_object = game
+                .world
+                .get::<Object>(spell)
+                .map_err(|_| "spell is not an Object")?;
 
-        let spell_incomplete = game
-            .world
-            .get::<IncompleteSpell>(spell)
-            .map_err(|_| "spell is not an IncompleteSpell")?;
+            let spell_incomplete = game
+                .world
+                .get::<IncompleteSpell>(spell)
+                .map_err(|_| "spell is not an IncompleteSpell")?;
 
-        if spell_object.controller != Some(player) {
-            return Err("spell is not controlled by player".to_owned());
-        }
-
-        let mut mana_spent = HashSet::new();
-
-        for (i, cost) in spell_incomplete.total_cost.items.iter().enumerate() {
-            let mana_id = spell_incomplete
-                .mana_paid
-                .get(i)
-                .ok_or_else(|| format!("Mana cost {} ({:?}) is not yet paid", i, cost))?;
-
-            if mana_spent.contains(mana_id) {
-                return Err(format!("Mana {:?} was already spent", mana_id));
+            if spell_object.controller != Some(player) {
+                return Err("spell is not controlled by player".to_owned());
             }
 
-            mana_spent.insert(*mana_id);
+            let mut mana_spent = HashSet::new();
 
-            let mana = player_data
-                .mana_pool
-                .get(*mana_id)
-                .ok_or_else(|| format!("Mana {:?} was not valid", mana_id))?;
+            for (i, cost) in spell_incomplete.total_cost.items.iter().enumerate() {
+                let mana_id = spell_incomplete
+                    .mana_paid
+                    .get(i)
+                    .ok_or_else(|| format!("Mana cost {} ({:?}) is not yet paid", i, cost))?;
 
-            if !cost.can_be_paid_with(&mana) {
-                return Err(format!(
-                    "Mana {} ({:?}) cannot be paid with {:?}",
-                    i, cost, mana
-                ));
+                if mana_spent.contains(mana_id) {
+                    return Err(format!("Mana {:?} was already spent", mana_id));
+                }
+
+                mana_spent.insert(*mana_id);
+
+                let mana = player_data
+                    .mana_pool
+                    .get(*mana_id)
+                    .ok_or_else(|| format!("Mana {:?} was not valid", mana_id))?;
+
+                if !cost.can_be_paid_with(&mana) {
+                    return Err(format!(
+                        "Mana {} ({:?}) cannot be paid with {:?}",
+                        i, cost, mana
+                    ));
+                }
             }
-        }
 
-        // 601.2h The player pays the total cost. First, they pay all costs
-        //        that don’t involve random elements or moving objects from
-        //        the library to a public zone, in any order. Then they pay
-        //        all remaining costs in any order. Partial payments are not
-        //        allowed. Unpayable costs can’t be paid.
-        player_data.mana_pool.spend(&spell_incomplete.mana_paid);
+            // 601.2h The player pays the total cost. First, they pay all costs
+            //        that don’t involve random elements or moving objects from
+            //        the library to a public zone, in any order. Then they pay
+            //        all remaining costs in any order. Partial payments are not
+            //        allowed. Unpayable costs can’t be paid.
+            player_data.mana_pool.spend(&spell_incomplete.mana_paid);
+        }
 
         // 601.2i Once the steps described in 601.2a–h are completed,
         //        effects that modify the characteristics of the spell as
@@ -241,6 +243,7 @@ pub fn finish_casting_spell(game: &mut Game, player: Entity, spell: Entity) {
         //        had priority before casting it, they get priority.
         //
         // TODO: Spell modifications, triggers
+        game.world.remove_one::<IncompleteSpell>(spell).unwrap();
         game.state = GameState::priority(player);
 
         Ok::<(), String>(())

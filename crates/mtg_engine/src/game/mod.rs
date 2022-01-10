@@ -397,6 +397,9 @@ impl Game {
             if stack.is_empty() {
                 self.end_current_step();
             } else {
+                // 608.1. Each time all players pass in succession, the spell or
+                //        ability on top of the stack resolves. (See rule 609,
+                //        “Effects.”)
                 self.resolve_one_from_stack();
             }
         } else {
@@ -592,7 +595,40 @@ impl Game {
     }
 
     fn resolve_one_from_stack(&mut self) {
-        todo!("resolve one entry from stack");
+        let stack = self.zone(ZoneId::Stack).unwrap();
+        let top = match stack.members().last() {
+            Some(top) => *top,
+            None => return,
+        };
+
+        let object = match self.world.get::<Object>(top) {
+            Ok(object) => object,
+            Err(_) => {
+                log::error!("Entity {:?} on stack is not an Object", top);
+                return;
+            }
+        };
+
+        // 608.3. If the object that’s resolving is a permanent spell, its
+        //        resolution involves a single step (unless it’s an Aura, a copy
+        //        of a permanent spell, or a mutating creature spell). The spell
+        //        card becomes a permanent and is put onto the battlefield under
+        //        the control of the spell’s controller.
+        if object.types.contains(&CardType::Creature) {
+            drop(object);
+            self.move_object_to_zone(top, ZoneId::Battlefield);
+        } else {
+            // Pull some data out of this object before dropping the borrow so
+            // that we can throw it in the graveyard.
+            let owner = object.owner;
+
+            log::warn!(
+                "We don't know how to resolve this kind of object yet: {:?}",
+                object.types
+            );
+            drop(object);
+            self.move_object_to_zone(top, ZoneId::Graveyard(owner));
+        }
     }
 
     /// Marks the given player as having lost.
