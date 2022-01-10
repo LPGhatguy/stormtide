@@ -2,6 +2,7 @@
   "name": "mtg-frontend",
   "version": "0.0.0",
   "devDependencies": {
+    "concurrently": "^7.0.0",
     "mtg": "file:pkg",
     "parcel": "^2.0.1",
     "prettier": "^2.5.1",
@@ -10,10 +11,10 @@
     "styled-components": "^5.3.3"
   },
   "scripts": {
-    "start": "npm run serve",
+    "start": "concurrently --raw --kill-others \"npm run watch-wasm\" \"npm run serve-js\"",
     "build-wasm": "wasm-pack build --target web",
     "watch-wasm": "watchexec -e rs,toml -w .. -- npm run build-wasm",
-    "build": "npm run build-wasm && parcel build js/index.html",
-    "serve": "npm run build-wasm && parcel serve js/index.html"
+    "serve-js": "parcel serve js/index.html",
+    "build": "npm run build-wasm && parcel build js/index.html"
   }
 }
