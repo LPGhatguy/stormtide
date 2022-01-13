@@ -2,10 +2,12 @@
 
 use std::mem::swap;
 
-use hecs::{Entity, World};
+use hecs::Entity;
 
 use crate::components::{Counters, Object, Permanent};
 use crate::counters::Counter;
+use crate::game::Game;
+use crate::player::PlayerId;
 use crate::pt::{AdjustPtEffect, PtValue, SetPtEffect, SwitchPtEffect};
 use crate::types::CardType;
 
@@ -13,7 +15,7 @@ use crate::types::CardType;
 pub trait Query {
     type Output;
 
-    fn query(&self, world: &World) -> Self::Output;
+    fn query(&self, game: &Game) -> Self::Output;
 }
 
 /// Query the power and toughness of a given entity, returning `None` if the
@@ -23,8 +25,8 @@ pub struct QueryPt(pub Entity);
 impl Query for QueryPt {
     type Output = Option<PtValue>;
 
-    fn query(&self, world: &World) -> Self::Output {
-        let entity = world.entity(self.0).ok()?;
+    fn query(&self, game: &Game) -> Self::Output {
+        let entity = game.world().entity(self.0).ok()?;
 
         if !entity.has::<Permanent>() {
             return None;
@@ -39,7 +41,7 @@ impl Query for QueryPt {
         // Layer 7b: any effects that directly set power/toughness.
         //
         // TODO: Sort by timestamp.
-        let mut layer_7b_query = world.query::<(&SetPtEffect,)>();
+        let mut layer_7b_query = game.world().query::<(&SetPtEffect,)>();
         for (_entity, (effect,)) in layer_7b_query.iter() {
             if effect.target == self.0 {
                 calculated_pt = effect.value;
@@ -49,7 +51,7 @@ impl Query for QueryPt {
         // Layer 7c: any effects that adjust power/toughness without setting it.
         //
         // TODO: Sort by timestamp.
-        let mut layer_7c_query = world.query::<(&AdjustPtEffect,)>();
+        let mut layer_7c_query = game.world().query::<(&AdjustPtEffect,)>();
         for (_entity, (effect,)) in layer_7c_query.iter() {
             if effect.target == self.0 {
                 calculated_pt.power += effect.adjustment.power;
@@ -68,7 +70,7 @@ impl Query for QueryPt {
         }
 
         // Layer 7e: power/toughness switching
-        let mut layer_7e_query = world.query::<(&SwitchPtEffect,)>();
+        let mut layer_7e_query = game.world().query::<(&SwitchPtEffect,)>();
         for (_entity, (effect,)) in layer_7e_query.iter() {
             if effect.target == self.0 {
                 swap(&mut calculated_pt.power, &mut calculated_pt.toughness);
@@ -79,12 +81,12 @@ impl Query for QueryPt {
     }
 }
 
-pub struct QueryMaxHandSize(pub Entity);
+pub struct QueryMaxHandSize(pub PlayerId);
 
 impl Query for QueryMaxHandSize {
     type Output = i64;
 
-    fn query(&self, _world: &World) -> Self::Output {
+    fn query(&self, _game: &Game) -> Self::Output {
         // TODO: Look for affects that alter maximum hand size.
         7
     }
@@ -96,8 +98,8 @@ pub struct QueryCreatures;
 impl Query for QueryCreatures {
     type Output = Vec<Entity>;
 
-    fn query(&self, world: &World) -> Self::Output {
-        let mut query = world.query::<(&Object,)>().with::<Permanent>();
+    fn query(&self, game: &Game) -> Self::Output {
+        let mut query = game.world().query::<(&Object,)>().with::<Permanent>();
         let mut output = Vec::new();
 
         for (entity, (object,)) in query.into_iter() {

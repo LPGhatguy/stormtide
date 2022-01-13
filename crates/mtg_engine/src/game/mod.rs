@@ -255,7 +255,7 @@ impl Game {
     /// Resolve a given query to compute a property of the game state, like a
     /// property of a game object.
     pub fn query<Q: Query>(&self, query_object: Q) -> Q::Output {
-        query_object.query(&self.world)
+        query_object.query(self)
     }
 
     pub fn active_player(&self) -> PlayerId {
