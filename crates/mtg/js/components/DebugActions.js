@@ -2,6 +2,7 @@ import { useContext } from "react"
 import styled from "styled-components"
 
 import { GameContext } from "./GameRoot"
+import { CombatContext } from "./CombatState"
 
 const DebugButton = styled.button`
   width: 100%;
@@ -11,6 +12,7 @@ const DebugButton = styled.button`
 
 export default function DebugActions({ player }) {
   const { game, doAction } = useContext(GameContext)
+  const combat = useContext(CombatContext)
 
   const concede = () => doAction(player, { type: "Concede" })
   const actions = [
@@ -37,21 +39,31 @@ export default function DebugActions({ player }) {
         break
 
       case "ChooseAttackers":
-        const noAttackers = () =>
-          doAction(player, { type: "ChooseAttackers", attackers: [] })
+        const confirmAttackers = () => {
+          doAction(player, {
+            type: "ChooseAttackers",
+            attackers: combat.attackers,
+          })
+          combat.setAttackers([])
+        }
         actions.push(
-          <DebugButton key="no-attackers" onClick={noAttackers}>
-            No Attackers
+          <DebugButton key="choose-attackers" onClick={confirmAttackers}>
+            Confirm Attackers
           </DebugButton>
         )
         break
 
       case "ChooseBlockers":
-        const noBlockers = () =>
-          doAction(player, { type: "ChooseBlockers", blockers: [] })
+        const confirmBlockers = () => {
+          doAction(player, {
+            type: "ChooseBlockers",
+            blockers: combat.blockers,
+          })
+          combat.setBlockers([])
+        }
         actions.push(
-          <DebugButton key="no-blockers" onClick={noBlockers}>
-            No Blockers
+          <DebugButton key="choose-blockers" onClick={confirmBlockers}>
+            Confirm Blockers
           </DebugButton>
         )
         break
@@ -65,6 +77,8 @@ export default function DebugActions({ player }) {
           )
 
         if (spell != null) {
+          // TODO: Only show Finish Casting if the spell says it's done having
+          // mana spent.
           const finishCasting = () =>
             doAction(player, {
               type: "FinishCastingSpell",
@@ -74,6 +88,18 @@ export default function DebugActions({ player }) {
           actions.push(
             <DebugButton key="finish-casting" onClick={finishCasting}>
               Finish Casting
+            </DebugButton>
+          )
+
+          const cancelCasting = () =>
+            doAction(player, {
+              type: "CancelCastingSpell",
+              spell: spell.entity,
+            })
+
+          actions.push(
+            <DebugButton key="cancel-casting" onClick={cancelCasting}>
+              Cancel Spell
             </DebugButton>
           )
         }

@@ -9,6 +9,7 @@ import Card from "./components/Card"
 import PlayerPanel from "./components/PlayerPanel"
 import StackWindow from "./components/StackWindow"
 import StateBanner from "./components/StateBanner"
+import CombatState from "./components/CombatState"
 
 import card_back from "../assets/card-back.png"
 import player1 from "../assets/player1.png"
@@ -161,7 +162,9 @@ function Main() {
 function App({ game }) {
   return (
     <GameRoot game={game}>
-      <Main />
+      <CombatState>
+        <Main />
+      </CombatState>
     </GameRoot>
   )
 }
