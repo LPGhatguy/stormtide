@@ -231,6 +231,8 @@ fn attackers_valid(game: &Game, player: PlayerId, attackers: &[Entity]) -> Resul
 }
 
 pub fn choose_attackers(game: &mut Game, player: PlayerId, attackers: &[Entity]) {
+    log::info!("Player {:?} chose attackers {:?}", player, attackers);
+
     let required_state = GameState::Player {
         player,
         action: PlayerActionCategory::ChooseAttackers,
@@ -301,7 +303,7 @@ pub fn choose_attackers(game: &mut Game, player: PlayerId, attackers: &[Entity])
 
     // 508.2. Second, the active player gets priority. (See rule 117,
     //        “Timing and Priority.”)
-    game.give_priority(game.active_player);
+    game.start_priority_round(game.active_player);
 }
 
 fn blockers_valid(_game: &Game, _player: PlayerId, _blockers: &[Entity]) -> Result<(), String> {
@@ -326,5 +328,5 @@ pub fn choose_blockers(game: &mut Game, player: PlayerId, blockers: &[Entity]) {
 
     // TODO
 
-    game.give_priority(game.active_player);
+    game.start_priority_round(game.active_player);
 }

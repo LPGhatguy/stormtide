@@ -9,7 +9,7 @@ import Card from "./components/Card"
 import PlayerPanel from "./components/PlayerPanel"
 import StackWindow from "./components/StackWindow"
 import StateBanner from "./components/StateBanner"
-import CombatState from "./components/CombatState"
+import CombatState, { CombatContext } from "./components/CombatState"
 
 import card_back from "../assets/card-back.png"
 import player1 from "../assets/player1.png"
@@ -64,6 +64,8 @@ const getPriority = (game) => {
 
 function Main() {
   const { game, doAction } = useContext(GameContext)
+  const combat = useContext(CombatContext)
+  const state = game.state()
 
   const priority = getPriority(game)
   const battlefield = game.objectsInZone("Battlefield")
@@ -109,7 +111,45 @@ function Main() {
 
         const id = object.card ? object.card.id : null
 
-        return <Card key={object.entity} canTap={true} id={id} />
+        let redZone = false
+        let translate = null
+        let onClick = null
+
+        if (
+          state.type === "Player" &&
+          state.action === "ChooseAttackers" &&
+          state.player === player.id
+        ) {
+          console.log("Creature is eligible for combat:", object.entity)
+          if (combat.attackers.includes(object.entity)) {
+            redZone = true
+            translate = top ? "down" : "up"
+          }
+
+          onClick = () => {
+            console.log("Creature clicked!")
+
+            if (combat.attackers.includes(object.entity)) {
+              combat.setAttackers(
+                combat.attackers.filter((x) => x !== object.entity)
+              )
+            } else {
+              combat.setAttackers([...combat.attackers, object.entity])
+            }
+          }
+        }
+
+        return (
+          <Card
+            key={object.entity}
+            canTap={true}
+            tapped={tapped}
+            id={id}
+            translate={translate}
+            redZone={redZone}
+            onClick={onClick}
+          />
+        )
       })
 
     const manaCards = battlefield

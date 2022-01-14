@@ -44,7 +44,19 @@ const StyledCard = styled.div`
   }
 `
 
-export default function Card({ id, canTap, onClick }) {
+const CardImage = styled.img`
+  box-shadow: ${(props) =>
+    props.redZone ? "0 0 8px 2px rgba(255, 0, 0, 0.8)" : ""};
+`
+
+export default function Card({
+  id,
+  canTap,
+  tapped,
+  onClick,
+  redZone,
+  translate,
+}) {
   const { objectDb } = useContext(GameContext)
   const card = objectDb.card(id)
 
@@ -54,8 +66,13 @@ export default function Card({ id, canTap, onClick }) {
   }
 
   return (
-    <StyledCard canTap={canTap}>
-      <img role="button" onClick={onClick} src={image} />
+    <StyledCard canTap={canTap} tapped={tapped} translate={translate}>
+      <CardImage
+        role="button"
+        onClick={onClick}
+        redZone={redZone}
+        src={image}
+      />
     </StyledCard>
   )
 }
