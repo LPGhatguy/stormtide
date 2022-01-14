@@ -139,6 +139,37 @@ impl Game {
         }
     }
 
+    pub fn do_action(&mut self, player: PlayerId, action: PlayerAction) {
+        log::debug!("Player {:?} attempting action {:?}", player, action);
+
+        match action {
+            PlayerAction::Concede => self.player_loses(player),
+            PlayerAction::PassPriority => self.pass_priority(player),
+
+            PlayerAction::ChooseAttackers { attackers } => {
+                combat::choose_attackers(self, player, &attackers)
+            }
+
+            PlayerAction::ChooseBlockers { blockers } => {
+                combat::choose_blockers(self, player, &blockers)
+            }
+
+            PlayerAction::PlayLand { card } => self.play_land(player, card),
+            PlayerAction::StartCastingSpell { spell } => {
+                casting::start_casting_spell(self, player, spell)
+            }
+            PlayerAction::FinishCastingSpell { spell } => {
+                casting::finish_casting_spell(self, player, spell)
+            }
+            PlayerAction::CancelCastingSpell { spell } => {
+                casting::cancel_casting_spell(self, player, spell)
+            }
+            PlayerAction::PayIncompleteSpellMana { spell, mana } => {
+                casting::pay_spell_mana(self, player, spell, mana)
+            }
+        }
+    }
+
     pub fn create_card(&mut self, id: CardId, zone_id: ZoneId, owner: PlayerId) -> Option<Entity> {
         let zone = self.zones.get_mut(&zone_id)?;
         let descriptor = self.object_db.card(id)?;
@@ -316,37 +347,6 @@ impl Game {
                 Some(*player)
             }
             _ => None,
-        }
-    }
-
-    pub fn do_action(&mut self, player: PlayerId, action: PlayerAction) {
-        log::debug!("Player {:?} attempting action {:?}", player, action);
-
-        match action {
-            PlayerAction::Concede => self.player_loses(player),
-            PlayerAction::PassPriority => self.pass_priority(player),
-
-            PlayerAction::ChooseAttackers { attackers } => {
-                combat::choose_attackers(self, player, &attackers)
-            }
-
-            PlayerAction::ChooseBlockers { blockers } => {
-                combat::choose_blockers(self, player, &blockers)
-            }
-
-            PlayerAction::PlayLand { card } => self.play_land(player, card),
-            PlayerAction::StartCastingSpell { spell } => {
-                casting::start_casting_spell(self, player, spell)
-            }
-            PlayerAction::FinishCastingSpell { spell } => {
-                casting::finish_casting_spell(self, player, spell)
-            }
-            PlayerAction::CancelCastingSpell { spell } => {
-                casting::cancel_casting_spell(self, player, spell)
-            }
-            PlayerAction::PayIncompleteSpellMana { spell, mana } => {
-                casting::pay_spell_mana(self, player, spell, mana)
-            }
         }
     }
 

@@ -270,6 +270,10 @@ pub fn cancel_casting_spell(game: &mut Game, player: PlayerId, spell: Entity) {
                 .get::<Object>()
                 .ok_or("spell was not an Object")?;
 
+            if spell_object.controller != Some(player) {
+                return Err("spell was not controlled by player");
+            }
+
             let spell_incomplete = spell_entity
                 .get::<IncompleteSpell>()
                 .ok_or("not an incomplete spell")?;
@@ -294,4 +298,6 @@ pub fn cancel_casting_spell(game: &mut Game, player: PlayerId, spell: Entity) {
             err
         );
     }
+
+    game.give_priority(player);
 }
