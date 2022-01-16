@@ -17,6 +17,7 @@ impl PlayerId {
 pub struct Player {
     pub id: PlayerId,
     pub name: String,
+    pub has_drawn_from_empty_library: bool,
     pub has_lost: bool,
     pub lands_played_this_turn: u32,
     pub life: i64,
@@ -39,6 +40,7 @@ impl Player {
         Self {
             id,
             name,
+            has_drawn_from_empty_library: false,
             has_lost: false,
             lands_played_this_turn: 0,
             life: 20,

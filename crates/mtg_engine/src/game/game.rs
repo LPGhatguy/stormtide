@@ -79,6 +79,7 @@ pub enum GameState {
 #[serde(tag = "type")]
 pub enum GameOutcome {
     Win { winner: PlayerId },
+    Draw,
 }
 
 impl Game {
@@ -269,7 +270,7 @@ impl Game {
     /// Temporary function: used for game setup in UI
     pub fn shuffle_libraries(&mut self) {
         for player in &self.players {
-            let library = self.zones.get_mut(&ZoneId::Hand(player.id)).unwrap();
+            let library = self.zones.get_mut(&ZoneId::Library(player.id)).unwrap();
             library.shuffle();
         }
     }
@@ -466,8 +467,13 @@ impl Game {
                 //        stack. Normally, all of a player’s permanents untap,
                 //        but effects can keep one or more of a player’s
                 //        permanents from untapping.
-                //
-                // TODO
+                for (_entity, (object, permanent)) in
+                    self.world.query_mut::<(&Object, &mut Permanent)>()
+                {
+                    if object.controller == Some(self.active_player) {
+                        permanent.tapped = false;
+                    }
+                }
 
                 // 502.3. No player receives priority during the untap step, so
                 //        no spells can be cast or resolve and no abilities can
@@ -499,8 +505,7 @@ impl Game {
             Step::Draw => {
                 // 504.1. First, the active player draws a card. This turn-based
                 //        action doesn’t use the stack.
-                //
-                // TODO
+                self.draw_card(self.active_player);
 
                 // 504.2. Second, the active player gets priority. (See rule
                 //        117, “Timing and Priority.”)
@@ -631,14 +636,33 @@ impl Game {
         self.start_priority_round(self.active_player);
     }
 
-    /// Marks the given player as having lost.
-    fn player_loses(&mut self, player: PlayerId) {
-        // TODO: Support >2 players
-        let other_player = self.players.iter().find(|p| p.id != player).unwrap();
+    pub(super) fn players_lose(&mut self, losers: &[PlayerId]) {
+        // If the game is already complete, no more players can lose.
+        if matches!(self.state, GameState::Complete(_)) {
+            return;
+        }
 
-        self.state = GameState::Complete(GameOutcome::Win {
-            winner: other_player.id,
-        });
+        let mut players_left = Vec::new();
+        for player in &mut self.players {
+            if losers.contains(&player.id) {
+                player.has_lost = true;
+            } else {
+                players_left.push(player.id);
+            }
+        }
+
+        if players_left.len() == 0 {
+            self.state = GameState::Complete(GameOutcome::Draw);
+        } else if players_left.len() == 1 {
+            self.state = GameState::Complete(GameOutcome::Win {
+                winner: players_left[0],
+            });
+        }
+    }
+
+    /// Marks the given player as having lost.
+    pub(super) fn player_loses(&mut self, player: PlayerId) {
+        self.players_lose(&[player]);
     }
 
     /// Returns the next step if there are steps to take still in this turn.
@@ -662,6 +686,19 @@ impl Game {
             Step::Main2 => Some(Step::End),
             Step::End => Some(Step::Cleanup),
             Step::Cleanup => None,
+        }
+    }
+
+    fn draw_card(&mut self, player: PlayerId) {
+        let library = self.zones.get(&ZoneId::Library(player)).unwrap();
+        match library.members().last() {
+            Some(&card) => {
+                self.move_object_to_zone(card, ZoneId::Hand(player));
+            }
+            None => {
+                let player = self.players.get_mut(player).unwrap();
+                player.has_drawn_from_empty_library = true;
+            }
         }
     }
 

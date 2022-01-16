@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::components::AttachedToEntity;
 
 use super::Game;
@@ -16,7 +18,6 @@ pub fn apply(game: &mut Game) -> bool {
         for (entity, (attached,)) in query.iter() {
             if !game.world.contains(attached.target) {
                 entities_to_despawn.push(entity);
-                actions_performed = true;
             }
         }
 
@@ -27,12 +28,14 @@ pub fn apply(game: &mut Game) -> bool {
         }
     }
 
+    let mut losers = HashSet::new();
+
     // 704.5a If a player has 0 or less life, that player loses the game.
     for player in &mut game.players {
         if !player.has_lost && player.life <= 0 {
             // TODO: Check if player is exempt from this SBA, like via
             // Phyrexian Unlife.
-            player.has_lost = true;
+            losers.insert(player.id);
             actions_performed = true;
         }
     }
@@ -40,8 +43,13 @@ pub fn apply(game: &mut Game) -> bool {
     // 704.5b If a player attempted to draw a card from a library with no
     //        cards in it since the last time state-based actions were
     //        checked, that player loses the game.
-    //
-    // TODO
+    for player in &mut game.players {
+        if !player.has_lost && player.has_drawn_from_empty_library {
+            player.has_drawn_from_empty_library = false;
+            losers.insert(player.id);
+            actions_performed = true;
+        }
+    }
 
     // 704.5c If a player has ten or more poison counters, that player loses
     //        the game. Ignore this rule in Two-Headed Giant games; see rule
@@ -142,6 +150,11 @@ pub fn apply(game: &mut Game) -> bool {
     //        714, “Saga Cards.”
     //
     // TODO
+
+    if !losers.is_empty() {
+        let losers: Vec<_> = losers.into_iter().collect();
+        game.players_lose(&losers);
+    }
 
     actions_performed
 }
