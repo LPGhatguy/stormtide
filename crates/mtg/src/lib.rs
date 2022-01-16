@@ -185,7 +185,7 @@ pub fn sample_game() -> Game {
                 .unwrap();
         }
 
-        game.zone_mut(ZoneId::Library(player)).unwrap().shuffle();
+        game.shuffle_libraries();
 
         for _ in 0..7 {
             let card = {
