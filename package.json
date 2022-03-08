@@ -11,10 +11,11 @@
     "styled-components": "^5.3.3"
   },
   "scripts": {
-    "start": "npm run build-wasm && concurrently --raw --kill-others \"npm run watch-wasm\" \"npm run serve-js\"",
-    "build": "npm run build-wasm && parcel build client/index.html",
-    "build-wasm": "wasm-pack build --target web crates/mtg",
-    "watch-wasm": "watchexec -e rs,toml -w .. -- npm run build-wasm",
+    "start": "npm run build-wasm-dev && concurrently --raw --kill-others \"npm run watch-wasm\" \"npm run serve-js\"",
+    "build": "npm run build-wasm-release && parcel build client/index.html",
+    "build-wasm-dev": "wasm-pack build --target web --dev crates/mtg",
+    "build-wasm-release": "wasm-pack build --target web --release crates/mtg",
+    "watch-wasm": "watchexec -e rs,toml -w .. -- npm run build-wasm-dev",
     "serve-js": "parcel serve client/index.html"
   }
 }

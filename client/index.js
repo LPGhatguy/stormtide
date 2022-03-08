@@ -1,4 +1,4 @@
-import init, { engineInit, Game } from "mtg"
+import init, { Game } from "mtg"
 import React, { useContext } from "react"
 import { render } from "react-dom"
 import styled from "styled-components"
@@ -213,8 +213,6 @@ async function main() {
   console.log("Loading WebAssembly...")
   await init()
   console.log("WebAssembly loaded!")
-
-  engineInit()
 
   let game = new Game()
   console.log("Players:", game.players())
