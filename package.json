@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "devDependencies": {
     "concurrently": "^7.0.0",
-    "mtg": "file:pkg",
+    "mtg": "file:crates/mtg/pkg",
     "parcel": "^2.0.1",
     "prettier": "^2.5.1",
     "react": "^17.0.2",
@@ -11,10 +11,10 @@
     "styled-components": "^5.3.3"
   },
   "scripts": {
-    "start": "concurrently --raw --kill-others \"npm run watch-wasm\" \"npm run serve-js\"",
-    "build-wasm": "wasm-pack build --target web",
+    "start": "npm run build-wasm && concurrently --raw --kill-others \"npm run watch-wasm\" \"npm run serve-js\"",
+    "build": "npm run build-wasm && parcel build client/index.html",
+    "build-wasm": "wasm-pack build --target web crates/mtg",
     "watch-wasm": "watchexec -e rs,toml -w .. -- npm run build-wasm",
-    "serve-js": "parcel serve js/index.html",
-    "build": "npm run build-wasm && parcel build js/index.html"
+    "serve-js": "parcel serve client/index.html"
   }
 }

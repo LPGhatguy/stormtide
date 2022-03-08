@@ -11,9 +11,9 @@ import StackWindow from "./components/StackWindow"
 import StateBanner from "./components/StateBanner"
 import CombatState, { CombatContext } from "./components/CombatState"
 
-import card_back from "../assets/card-back.png"
-import player1 from "../assets/player1.png"
-import player2 from "../assets/player2.png"
+import card_back from "~/assets/card-back.png"
+import player1 from "~/assets/player1.png"
+import player2 from "~/assets/player2.png"
 
 const GameContainer = styled.div`
   flex: 1 0;

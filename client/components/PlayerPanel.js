@@ -5,7 +5,7 @@ import DebugActions from "./DebugActions"
 import ManaPool from "./ManaPool"
 import { GameContext } from "./GameRoot"
 
-import card_back from "../../assets/card-back.png"
+import card_back from "~/assets/card-back.png"
 
 const SidePanel = styled.div`
   background-color: ${(props) => (props.priority ? "#44444b" : "#0f0f10")};
