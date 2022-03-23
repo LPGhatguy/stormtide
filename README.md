@@ -1,8 +1,6 @@
-# MTG3
+# Stormtide
 
-Let's write yet another MtG rules engine!
-
-This one has its rules implementation in Rust with a React.js frontend, glued together with WebAssembly.
+Rules engine for a card game using Rust, React.js, and WebAssembly.
 
 ## Requirements
 
@@ -11,6 +9,8 @@ This one has its rules implementation in Rust with a React.js frontend, glued to
 - wasm-pack 0.10.2
 
 ## Getting Started
+
+This project is split between two crates: `mtg_engine` where the core rules are implemented, and `mtg`, which is a React-based frontend consuming `mtg_engine` via WebAssembly.
 
 To run tests:
 
