@@ -36,3 +36,7 @@ npm run build
 Implementation is currently based on comprehensive rules from August 7, 2020 — the release of Double Masters.
 
 [Comprehensive Rules Summary](https://mtg.gamepedia.com/Comprehensive_Rules)
+
+## License
+
+This project is available under the terms of the Mozilla Public License, Version 2.0. Details are available in [LICENSE.txt](LICENSE.txt) or at <https://www.mozilla.org/en-US/MPL/>.
